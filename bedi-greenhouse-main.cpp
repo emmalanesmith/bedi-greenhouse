@@ -57,7 +57,7 @@ double activateWaterCycle()
 	stopPump();
 	resetWaterCycle();
 
-	return time1;
+	return startTime;
 }
 
 // Trivial Functions **************************
