@@ -1,112 +1,125 @@
-// Non-Trivial Functions **********************
+/*
+Plant Bed(i) Greenhouse:
+An automated plant incubator for bringing up houseplants, powered by a LEGO Mindstorms EV3 Robot.
+By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
+Last Updated: 11/14/2024
+*/
 
-const double CONVERSION_FACTOR = 2.75;
-const double NINTEY_DEGREES_DISTANCE = 10; // change after measuring
+//Fail-safe method identifiers
+const int PUMP = 0;
+const int ROTATION = 1;
+const int WATER_CYCLE = 2;
 
-// Rotate green house
-double rotateGreenhouse(int& numRotations)
+//Fail-safe max times
+const double MAX_PUMP_TIME = 0.0; //set empirically
+const double MAX_AXIS_TIME = 0.0;
+const double MAX_ROTATION_TIME = 0.0;
+
+//Rotation & speeds
+const double ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
+const int ROTATION_SPEED = 25; //set empirically
+const int PUMP_SPEED = 25; //set empirically
+const int MAX_ROTATIONS = 2; //change direction after 2 turns
+const double CONVERSION_FACTOR = 0.0; //set empirically
+
+/*
+MOTOR A: peristaltic pump
+MOTOR B: rotation of greenhouse base
+MOTOR C: x direction, 2D axis
+MOTOR D: y direction, 2D axis
+*/
+
+void configureSensors()
 {
-	double startTime = time1[T1]; // fail safe timer
-	int counter = 0;
-	bool direction; // true for ccw - false for cw
-
-	// turns ccw
-	while (direction)
-	{
-		motor[motorB] = 25; // check wiring to ensure correct motor
-		while (nMotorEncoder[motorB] * CONVERSION_FACTOR < NINETY_DEGREES_DISTANCE)
-		{}
-		motor[motorB] = 25; // check wiring to ensure correct motor
-		counter++;
-
-		// switches direction once it rotates the max numRotations
-		if (counter == numRotations)
-		{
-			direction = false;
-			counter = 0;
-		}
-	}
-
-	// turns cw
-	while (!direction)
-	{
-		motor[motorB] = 25; // check wiring to ensure correct motor
-		while (nMotorEncoder[motorB] * CONVERSION_FACTOR < NINETY_DEGREES_DISTANCE)
-		{}
-		motor[motorB] = 25; // check wiring to ensure correct motor
-		counter++;
-
-		// switches direction once it rotates the max numRotations
-		if (counter == numRotations)
-		{
-			direction = true;
-			counter = 0;
-		}
-	}
+	SensorType[S1] = sensorEV3_Color;
+	wait1Msec(50);
+	SensorMode[S1] = modeEV3Color_Color;
+	wait1Msec(50);
 }
 
-// Activate Water Cycle
+bool checkFillLevel()
+{
+	if (SensorMode[S1] == (int)colorWhite)
+		return 0;
+	else if (!SensorMode[S1] == (int)colorWhite)
+		return 1;
+}
+
+void displayFillLevel()
+{
+	if (checkFillLevel())
+		displayTextLine(5, "Fill level: %s", "Water available.");
+	else
+		displayTextLine(5, "Fill level: %s", "Empty. Please add water.");
+}
+
+double startPump()
+{
+	double startTime = time1[T1]; //for the fail safe timer
+	motor[motorA] = PUMP_SPEED;
+	return startTime;
+}
+
+void stopPump()
+{
+	double startTime = time1[T1];
+	motor[motorA] = 0;
+	return startTime;
+}
+
+void resetWaterCycle()
+{}
+
+/*
+Powers the motors to turn 90 degrees (at ROTATION_SPEED)
+Switches directions after 180 degrees (MAX_ROTATIONS)
+int& numRotations: number of rotations thus far
+bool& clockwise: true for CW, false for CCW
+*/
+double rotateGreenhouse(int& numRotations, bool& clockwise)
+{
+	double startTime = time1[T1];
+	if (numRotations == MAX_ROTATIONS)
+	{
+		clockwise = !clockwise; //change direction
+		numRotations = 0;
+	}
+	
+	nMotorEncoder[motorB] = 0;
+	if (clockwise)
+		motor[motorB] = ROTATION_SPEED;
+	else
+		motor[motorB] = -ROTATION_SPEED;
+	
+	while(abs(nMotorEncoder[B])*CONVERSION_FACTOR < ROTATION_DISTANCE)
+	{}
+	
+	motor[motorB] = 0;
+	return startTime;
+}
+
+/*
+Checks if water is available
+Starts the pump and the 2D axis motors
+Stops pump and returns motors to origin
+*/
 double activateWaterCycle()
 {
 	double startTime = time1[T1]; // fail safe timer
 
-	while (checkFillLevel())
-	{}
+	while (!checkFillLevel()) //no water
+	{
+		displayFillLevel();
+	}		
 	startPump();
 	wait1Msec(); // insert time (empirically)
+	//activate 2D axis motors
 	stopPump();
 	resetWaterCycle();
 
 	return startTime;
 }
 
-// Trivial Functions **************************
-
-// Check fill level
-bool checkFillLevel()
-{
-	if (SensorMode[S1] == white) //check wiring to ensure correct sensor port // check what code for 'white' is
-	{
-		return 0;
-	}
-	else if (!SensorMode[S1] == white)
-	{
-		return 1;
-	}
-}
-
-// Displace fill level
-void displayFillLevel(string fillLevel)
-{
-	if (checkFillLevel == 1)
-	{
-		displayString (5, "Fill level: %s", "Full");
-	}
-	else
-	{
-		displayString (5, "Fill level: %s", "Empty");
-	}
-}
-
-// Start pump
-double startPump()
-{
-	time1 = 0; //fail safe timer
-	motor[motorA] = 25; //check wiring to ensure correct motor
-
-	return time1;
-}
-
-// Stop pump
-void stopPump()
-{
-	time1 = 0; //fail safe timer
-	motor[motorA] = 0; //check wiring to ensure correct motor
-
-	return time1;
-}
-
-// Ignore for now
 task main()
 {
 }
