@@ -101,16 +101,16 @@ double rotateGreenhouse(int& numRotations, bool& clockwise)
 		clockwise = !clockwise; //change direction
 		numRotations = 0;
 	}
-	
+
 	nMotorEncoder[motorB] = 0;
 	if (clockwise)
 		motor[motorB] = ROTATION_SPEED;
 	else
 		motor[motorB] = -ROTATION_SPEED;
-	
+
 	while(abs(nMotorEncoder[B])*CONVERSION_FACTOR < ROTATION_DISTANCE)
 	{}
-	
+
 	motor[motorB] = 0;
 	return startTime;
 }
@@ -127,7 +127,7 @@ double activateWaterCycle()
 	while (!checkFillLevel()) //no water
 	{
 		displayFillLevel();
-	}		
+	}
 	startPump();
 	wait1Msec(); // insert time (empirically)
 	//activate 2D axis motors
