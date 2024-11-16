@@ -5,6 +5,8 @@ By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
 Last Updated: 11/14/2024
 */
 
+#include "PC_FileIO.c"
+
 //Fail-safe method identifiers
 const int PUMP = 0;
 const int ROTATION = 1;
@@ -73,10 +75,7 @@ void resetWaterCycle()
 void stopRotation()
 {}
 
-/*
-Emma
-*/
-string readUserSettings(TFileHandle& configFile, float settings[])
+string readUserSettings(TFileHandle& config, float settings[])
 {}
 
 /*
@@ -100,7 +99,7 @@ float rotateGreenhouse(int& numRotations, bool& clockwise)
 	else
 		motor[motorB] = -ROTATION_SPEED;
 
-	while(abs(nMotorEncoder[B])*CONVERSION_FACTOR < ROTATION_DISTANCE)
+	while(abs(nMotorEncoder[motorB])*CONVERSION_FACTOR < ROTATION_DISTANCE)
 	{}
 
 	motor[motorB] = 0;
@@ -121,7 +120,7 @@ float activateWaterCycle()
 		displayFillLevel();
 	}
 	startPump();
-	wait1Msec(); // insert time (empirically)
+	wait1Msec(10000); // insert time (empirically)
 	//activate 2D axis motors
 	stopPump();
 	resetWaterCycle();
@@ -129,33 +128,18 @@ float activateWaterCycle()
 	return startTime;
 }
 
-/*
-Meeji
-*/
 void generateStats(string plantName, float settings[])
 {}
 
-/*
-Kira
-*/
-void generateEndFile(TFileHandle& outFile, string plantName, float settings[])
+void generateEndFile(TFileHandle& fout, string plantName, float settings[])
 {}
 
-/*
-Kira
-*/
-void generateFailFile(TFileHandle& outFile, string plantName, float settings[], int task)
+void generateFailFile(TFileHandle& fout, string plantName, float settings[], int task)
 {}
 
-/*
-Emma
-*/
 bool checkFail(int task, float startTime)
 {}
 
-/*
-Emma
-*/
 void activateGreenhouse(float settings[], string plantName)
 {}
 
@@ -170,4 +154,12 @@ void safeShutDown()
 task main()
 {
 	configureSensors();
+	
+	TFileHandle config;
+	bool fileOkay = openReadPC(config, "config.txt");
+	TFileHandle fout;
+	bool fileGood = openWritePC(fout, "output.txt"); //syntax
+
+	closeFilePC(fout);
+	closeFilePC(config);
 }
