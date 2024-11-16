@@ -95,9 +95,9 @@ Reads in user array and saves settings
 settings[0]: water cycle interval, settings[1]: rotation cycle interval
 date[0]: day, date[1]: month, date[2]: year
 */
-string readUserSettings(TFileHandle& config, float settings[], int date[])
+void readUserSettings(TFileHandle& config, string& plantName, float settings[], int date[])
 {
-	string plantName = " ", header = " "; //ignore headers on config file
+	string header = " "; //ignore headers on config file
 	readTextPC(config, header);
 	readTextPC(config, plantName);
 	
