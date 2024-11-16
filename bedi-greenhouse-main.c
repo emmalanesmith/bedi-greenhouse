@@ -7,23 +7,23 @@ Last Updated: 11/14/2024
 
 #include "PC_FileIO.c"
 
-//Fail-safe method identifiers
-const int PUMP = 0;
-const int ROTATION = 1;
-const int WATER_CYCLE = 2;
-
 //Fail-safe max times
 const float MAX_PUMP_TIME = 0.0; //set empirically
 const float MAX_AXIS_TIME = 0.0;
 const float MAX_ROTATION_TIME = 0.0;
 
-//Rotation & speeds
+//Rotation
 const float ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
 const int ROTATION_SPEED = 25; //set empirically
-const int PUMP_SPEED = 25; //set empirically
-const float PUMP_TIME = 0.0; //set emprirically
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
-const float CONVERSION_FACTOR = 0.0; //set empirically
+const float ROTATION_CONVERSION_FACTOR = 0.0; //set empirically
+
+//Water cycle
+const int PUMP_SPEED = 25; //set empirically
+const float AXIS_CONVERSION_FACTOR = 0.0; //set empirically, might need two?
+const float Y_AXIS_LENGTH = 0.0; //^
+const float X_AXIS_LENGTH = 0.0; //^
+const float AXIS_SPEED = 25; //^
 
 /*
 MOTOR A: peristaltic pump
@@ -56,23 +56,39 @@ void displayFillLevel()
 		displayTextLine(5, "Empty water tank. Please add water.");
 }
 
+//Returns false if fails
 float startPump()
 {
-	float startTime = time1[T1]; //for the fail safe timer
+	float startTime = time1[T1];
 	motor[motorA] = PUMP_SPEED;
 	return startTime;
 }
 
-float stopPump()
+/*
+Resets 2D axis to starting position
+First x-axis, then y-axis
+Returns false if fails
+*/
+bool resetWaterCycle()
 {
+	bool executed = true;
 	float startTime = time1[T1];
-	motor[motorA] = 0;
-	return startTime;
-}
+	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
+	
+	motor[motorC] = -AXIS_SPEED;
+	while((abs(nMotorEncoder[motorC])*AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
+	{}
+	motor[motorC] = 0;
 
-//emma to do 11/16/2024
-void resetWaterCycle()
-{}
+	motor[motorD] = -AXIS_SPEED;
+	while((abs(nMotorEncoder[motorD])*AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
+	{}
+	motor[motorD] = 0;
+
+	if (time1[T1] - startTime > MAX_AXIS_TIME)
+		executed = false;
+	return executed;
+}
 
 /*
 Reads in user array and saves settings
@@ -105,9 +121,11 @@ Powers the motors to turn 90 degrees (at ROTATION_SPEED)
 Switches directions after 180 degrees (MAX_ROTATIONS)
 int& numRotations: number of rotations thus far
 bool& clockwise: true for CW, false for CCW
+Returns false if fails
 */
-float rotateGreenhouse(int& numRotations, bool& clockwise)
+bool rotateGreenhouse(int& numRotations, bool& clockwise)
 {
+	bool executed = true;
 	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
@@ -121,34 +139,53 @@ float rotateGreenhouse(int& numRotations, bool& clockwise)
 	else
 		motor[motorB] = -ROTATION_SPEED;
 
-	while(abs(nMotorEncoder[motorB])*CONVERSION_FACTOR < ROTATION_DISTANCE)
+	while((abs(nMotorEncoder[motorB])*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
-
 	motor[motorB] = 0;
-	return startTime;
+	
+	if (time1[T1] - startTime > MAX_ROTATION_TIME)
+		executed = false;
+	return executed;
 }
 
-//emma to do 11/16/2024
 /*
 Checks if water is available
 Starts the pump and the 2D axis motors
 Stops pump and returns motors to origin
+Returns false if fails
 */
-float activateWaterCycle()
+bool activateWaterCycle()
 {
+	bool executed = true;
 	float startTime = time1[T1]; // fail safe timer
-
+	
 	while (!checkFillLevel()) //no water
 	{
 		displayFillLevel();
 	}
 	startPump();
-	wait1Msec(PUMP_TIME); // insert time (empirically)
-	//activate 2D axis motors
-	stopPump();
-	resetWaterCycle();
 
-	return startTime;
+	//activate 2D axis
+	if (executed)
+	{
+		nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
+		motor[motorC] = motor[motorD] = AXIS_SPEED;
+		while((abs(nMotorEncoder[motorD])*AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME)) //fail-safe
+		{
+			
+			while(abs(nMotorEncoder[motorC])*AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH)
+			{}
+			motor[motorC] *= -1;
+			nMotorEncoder[motorC] = 0;
+		}
+		motor[motorC] = motor[motorD] = motor[motorA] = 0; //stop axis and pump
+		if (time1[T1] - startTime < MAX_AXIS_TIME)
+			executed = resetWaterCycle();
+	}
+	
+	if (time1[T1] - startTime > MAX_ROTATION_TIME)
+		executed = false;
+	return executed;
 }
 
 //meeji
@@ -172,23 +209,18 @@ void generateEndFile(TFileHandle& fout, string plantName, float settings[], int 
 void generateFailFile(TFileHandle& fout, string plantName, float settings[], int date[], int task)
 {}
 
-//emma to do 11/16/2024
-bool checkFail(int task, float startTime)
-{}
-
-//emma to do 11/16/2024
+//emma
 void activateGreenhouse(float settings[], string plantName, int date[])
 {}
 
 void safeShutDown()
 {
-	stopPump();
-	stopRotation();
+	motor[motorA] = 0; //stop pump
+	motor[motorB] = 0; //stop rotation
 	resetWaterCycle();
 	generateFailFile();
 }
 
-//emma update after finishing functions 11/16/2024
 task main()
 {
 	clearTimer(T1);
