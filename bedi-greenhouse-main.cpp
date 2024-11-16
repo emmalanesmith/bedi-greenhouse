@@ -40,17 +40,17 @@ void configureSensors()
 bool checkFillLevel()
 {
 	if (SensorMode[S1] == (int)colorWhite)
-		return 0;
+		return false;
 	else if (!SensorMode[S1] == (int)colorWhite)
-		return 1;
+		return true;
 }
 
 void displayFillLevel()
 {
 	if (checkFillLevel())
-		displayTextLine(5, "Fill level: %s", "Water available.");
+		displayTextLine(5, "Water available in tank.");
 	else
-		displayTextLine(5, "Fill level: %s", "Empty. Please add water.");
+		displayTextLine(5, "Empty water tank. Please add water.");
 }
 
 double startPump()
@@ -68,6 +68,23 @@ void stopPump()
 }
 
 void resetWaterCycle()
+{}
+
+void stopRotation()
+{}
+
+void safeShutDown()
+{
+	stopPump();
+	stopRotation();
+	resetWaterCycle();
+	generateFailFile();
+}
+
+/*
+Emma
+*/
+string readUserSettings(TFileHandle& configFile, double settings[])
 {}
 
 /*
@@ -120,6 +137,37 @@ double activateWaterCycle()
 	return startTime;
 }
 
+/*
+Meeji
+*/
+void generateStats(string plantName, double settings[])
+{}
+
+/*
+Kira
+*/
+void generateEndFile(TFileHandle& outFile, string plantName, double settings[])
+{}
+
+/*
+Kira
+*/
+void generateFailFile(TFileHandle& outFile, string plantName, double settings[], int task)
+{}
+
+/*
+Emma
+*/
+bool checkFail(int task, double startTime)
+{}
+
+/*
+Emma
+*/
+void activateGreenhouse(double settings[], string plantName)
+{}
+
 task main()
 {
+	configureSensors();
 }
