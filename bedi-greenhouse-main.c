@@ -5,22 +5,25 @@ By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
 Last Updated: 11/14/2024
 */
 
+#include "PC_FileIO.c"
+
 //Fail-safe method identifiers
 const int PUMP = 0;
 const int ROTATION = 1;
 const int WATER_CYCLE = 2;
 
 //Fail-safe max times
-const double MAX_PUMP_TIME = 0.0; //set empirically
-const double MAX_AXIS_TIME = 0.0;
-const double MAX_ROTATION_TIME = 0.0;
+const float MAX_PUMP_TIME = 0.0; //set empirically
+const float MAX_AXIS_TIME = 0.0;
+const float MAX_ROTATION_TIME = 0.0;
 
 //Rotation & speeds
-const double ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
+const float ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
 const int ROTATION_SPEED = 25; //set empirically
 const int PUMP_SPEED = 25; //set empirically
+const float PUMP_TIME = 0.0; //set emprirically
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
-const double CONVERSION_FACTOR = 0.0; //set empirically
+const float CONVERSION_FACTOR = 0.0; //set empirically
 
 /*
 MOTOR A: peristaltic pump
@@ -53,39 +56,49 @@ void displayFillLevel()
 		displayTextLine(5, "Empty water tank. Please add water.");
 }
 
-double startPump()
+float startPump()
 {
-	double startTime = time1[T1]; //for the fail safe timer
+	float startTime = time1[T1]; //for the fail safe timer
 	motor[motorA] = PUMP_SPEED;
 	return startTime;
 }
 
-void stopPump()
+float stopPump()
 {
-	double startTime = time1[T1];
+	float startTime = time1[T1];
 	motor[motorA] = 0;
 	return startTime;
 }
 
+//emma to do 11/16/2024
 void resetWaterCycle()
 {}
 
-void stopRotation()
-{}
-
-void safeShutDown()
-{
-	stopPump();
-	stopRotation();
-	resetWaterCycle();
-	generateFailFile();
-}
-
 /*
-Emma
+Reads in user array and saves settings
+settings[0]: water cycle interval, settings[1]: rotation cycle interval
+date[0]: day, date[1]: month, date[2]: year
 */
-string readUserSettings(TFileHandle& configFile, double settings[])
-{}
+string readUserSettings(TFileHandle& config, float settings[], int date[])
+{
+	string plantName = " ", header = " "; //ignore headers on config file
+	readTextPC(config, header);
+	readTextPC(config, plantName);
+	
+	readTextPC(config, header);
+	readFloatPC(config, settings[0]);
+	readTextPC(config, header);
+	readFloatPC(config, settings[1]);
+	
+	readTextPC(config, header);
+	readIntPC(config, date[0]);
+	readTextPC(config, header);
+	readIntPC(config, date[1]);
+	readTextPC(config, header);
+	readIntPC(config, date[2]);
+
+	return plantName;
+}
 
 /*
 Powers the motors to turn 90 degrees (at ROTATION_SPEED)
@@ -93,9 +106,9 @@ Switches directions after 180 degrees (MAX_ROTATIONS)
 int& numRotations: number of rotations thus far
 bool& clockwise: true for CW, false for CCW
 */
-double rotateGreenhouse(int& numRotations, bool& clockwise)
+float rotateGreenhouse(int& numRotations, bool& clockwise)
 {
-	double startTime = time1[T1];
+	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
 		clockwise = !clockwise; //change direction
@@ -108,28 +121,29 @@ double rotateGreenhouse(int& numRotations, bool& clockwise)
 	else
 		motor[motorB] = -ROTATION_SPEED;
 
-	while(abs(nMotorEncoder[B])*CONVERSION_FACTOR < ROTATION_DISTANCE)
+	while(abs(nMotorEncoder[motorB])*CONVERSION_FACTOR < ROTATION_DISTANCE)
 	{}
 
 	motor[motorB] = 0;
 	return startTime;
 }
 
+//emma to do 11/16/2024
 /*
 Checks if water is available
 Starts the pump and the 2D axis motors
 Stops pump and returns motors to origin
 */
-double activateWaterCycle()
+float activateWaterCycle()
 {
-	double startTime = time1[T1]; // fail safe timer
+	float startTime = time1[T1]; // fail safe timer
 
 	while (!checkFillLevel()) //no water
 	{
 		displayFillLevel();
 	}
 	startPump();
-	wait1Msec(); // insert time (empirically)
+	wait1Msec(PUMP_TIME); // insert time (empirically)
 	//activate 2D axis motors
 	stopPump();
 	resetWaterCycle();
@@ -137,37 +151,68 @@ double activateWaterCycle()
 	return startTime;
 }
 
-/*
-Meeji
-*/
-void generateStats(string plantName, double settings[])
+//meeji
+void generateStats(string plantName, float settings[], int date[])
 {}
 
-/*
-Kira
-*/
-void generateEndFile(TFileHandle& outFile, string plantName, double settings[])
+//kira
+void generateEndFile(TFileHandle& fout, string plantName, float settings[], int date[])
+{
+	/*
+ 	writeEndlPC(fout);
+  	string s, float f, int i, etc.
+  	writeTextPC(fout, s);
+   	writeFloatPC(fout, f);
+    	writeFloatPC(fout, "%.2f", f); //this is how they do it on the doc but i feel like it's writeTextPC not writeFloatPC
+     	writeIntPC(fout, i);
+	*/
+}
+
+//kira
+void generateFailFile(TFileHandle& fout, string plantName, float settings[], int date[], int task)
 {}
 
-/*
-Kira
-*/
-void generateFailFile(TFileHandle& outFile, string plantName, double settings[], int task)
+//emma to do 11/16/2024
+bool checkFail(int task, float startTime)
 {}
 
-/*
-Emma
-*/
-bool checkFail(int task, double startTime)
+//emma to do 11/16/2024
+void activateGreenhouse(float settings[], string plantName, int date[])
 {}
 
-/*
-Emma
-*/
-void activateGreenhouse(double settings[], string plantName)
-{}
+void safeShutDown()
+{
+	stopPump();
+	stopRotation();
+	resetWaterCycle();
+	generateFailFile();
+}
 
+//emma update after finishing functions 11/16/2024
 task main()
 {
+	clearTimer(T1);
+	float runTime = 0.0;
+	
 	configureSensors();
+	
+	TFileHandle config;
+	bool configOpen = openReadPC(config, "config.txt");
+	TFileHandle fout;
+	bool foutOpen = openWritePC(fout, "output.txt"); //syntax
+
+	if (configOpen && foutOpen)
+	{
+		string plantName = " ";
+		float settings[2] = {0.0, 0.0}; //water cycle interval, rotation cycle interval
+		int date[3] = {0, 0, 0}; //day, month, year
+		plantName = readUserSettings(config, settings, date);
+
+		closeFilePC(fout);
+		closeFilePC(config);
+	}
+	else
+	{
+		displayTextLine(5, "ERROR opening files.");
+	}
 }

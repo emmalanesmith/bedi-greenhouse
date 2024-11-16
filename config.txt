@@ -1,0 +1,17 @@
+PLANT NAME:
+George
+
+WATER CYCLE INTERVAL (milliseconds):
+300000.0
+
+ROTATION CYCLE INTERVAL (milliseconds):
+600000.0
+
+DAY (##):
+16
+
+MONTH (##):
+11
+
+YEAR(####):
+2024
