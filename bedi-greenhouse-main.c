@@ -72,11 +72,10 @@ float stopPump()
 void resetWaterCycle()
 {}
 
-void stopRotation()
-{}
-
 string readUserSettings(TFileHandle& config, float settings[])
-{}
+{
+	
+}
 
 /*
 Powers the motors to turn 90 degrees (at ROTATION_SPEED)
