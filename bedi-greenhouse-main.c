@@ -85,7 +85,7 @@ bool resetWaterCycle()
 	{}
 	motor[motorD] = 0;
 
-	if (time[T1] - startTime > MAX_AXIS_TIME)
+	if (time1[T1] - startTime > MAX_AXIS_TIME)
 		executed = false;
 	return executed;
 }
@@ -143,7 +143,7 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 	{}
 	motor[motorB] = 0;
 	
-	if (time[T1] - startTime > MAX_ROTATION_TIME)
+	if (time1[T1] - startTime > MAX_ROTATION_TIME)
 		executed = false;
 	return executed;
 }
@@ -183,7 +183,7 @@ bool activateWaterCycle()
 			executed = resetWaterCycle();
 	}
 	
-	if (time[T1] - startTime > MAX_ROTATION_TIME)
+	if (time1[T1] - startTime > MAX_ROTATION_TIME)
 		executed = false;
 	return executed;
 }
