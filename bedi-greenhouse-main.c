@@ -11,16 +11,16 @@ const int ROTATION = 1;
 const int WATER_CYCLE = 2;
 
 //Fail-safe max times
-const double MAX_PUMP_TIME = 0.0; //set empirically
-const double MAX_AXIS_TIME = 0.0;
-const double MAX_ROTATION_TIME = 0.0;
+const float MAX_PUMP_TIME = 0.0; //set empirically
+const float MAX_AXIS_TIME = 0.0;
+const float MAX_ROTATION_TIME = 0.0;
 
 //Rotation & speeds
-const double ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
+const float ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
 const int ROTATION_SPEED = 25; //set empirically
 const int PUMP_SPEED = 25; //set empirically
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
-const double CONVERSION_FACTOR = 0.0; //set empirically
+const float CONVERSION_FACTOR = 0.0; //set empirically
 
 /*
 MOTOR A: peristaltic pump
@@ -53,16 +53,16 @@ void displayFillLevel()
 		displayTextLine(5, "Empty water tank. Please add water.");
 }
 
-double startPump()
+float startPump()
 {
-	double startTime = time1[T1]; //for the fail safe timer
+	float startTime = time1[T1]; //for the fail safe timer
 	motor[motorA] = PUMP_SPEED;
 	return startTime;
 }
 
-void stopPump()
+float stopPump()
 {
-	double startTime = time1[T1];
+	float startTime = time1[T1];
 	motor[motorA] = 0;
 	return startTime;
 }
@@ -73,18 +73,10 @@ void resetWaterCycle()
 void stopRotation()
 {}
 
-void safeShutDown()
-{
-	stopPump();
-	stopRotation();
-	resetWaterCycle();
-	generateFailFile();
-}
-
 /*
 Emma
 */
-string readUserSettings(TFileHandle& configFile, double settings[])
+string readUserSettings(TFileHandle& configFile, float settings[])
 {}
 
 /*
@@ -93,9 +85,9 @@ Switches directions after 180 degrees (MAX_ROTATIONS)
 int& numRotations: number of rotations thus far
 bool& clockwise: true for CW, false for CCW
 */
-double rotateGreenhouse(int& numRotations, bool& clockwise)
+float rotateGreenhouse(int& numRotations, bool& clockwise)
 {
-	double startTime = time1[T1];
+	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
 		clockwise = !clockwise; //change direction
@@ -120,9 +112,9 @@ Checks if water is available
 Starts the pump and the 2D axis motors
 Stops pump and returns motors to origin
 */
-double activateWaterCycle()
+float activateWaterCycle()
 {
-	double startTime = time1[T1]; // fail safe timer
+	float startTime = time1[T1]; // fail safe timer
 
 	while (!checkFillLevel()) //no water
 	{
@@ -140,32 +132,40 @@ double activateWaterCycle()
 /*
 Meeji
 */
-void generateStats(string plantName, double settings[])
+void generateStats(string plantName, float settings[])
 {}
 
 /*
 Kira
 */
-void generateEndFile(TFileHandle& outFile, string plantName, double settings[])
+void generateEndFile(TFileHandle& outFile, string plantName, float settings[])
 {}
 
 /*
 Kira
 */
-void generateFailFile(TFileHandle& outFile, string plantName, double settings[], int task)
+void generateFailFile(TFileHandle& outFile, string plantName, float settings[], int task)
 {}
 
 /*
 Emma
 */
-bool checkFail(int task, double startTime)
+bool checkFail(int task, float startTime)
 {}
 
 /*
 Emma
 */
-void activateGreenhouse(double settings[], string plantName)
+void activateGreenhouse(float settings[], string plantName)
 {}
+
+void safeShutDown()
+{
+	stopPump();
+	stopRotation();
+	resetWaterCycle();
+	generateFailFile();
+}
 
 task main()
 {
