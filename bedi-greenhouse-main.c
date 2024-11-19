@@ -15,12 +15,12 @@ const float MAX_Y_AXIS_TIME = 9100;
 const float MAX_ROTATION_TIME = 0.0; //set empirically**********************
 
 //Rotation constants (found empirically)
-const float ROTATION_DISTANCE = 24.1;
-const int ROTATION_SPEED = 5;
+const float ROTATION_DISTANCE = 40.0;
+const int ROTATION_SPEED = 20;
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
 //Wheel radii and conversion factors (found empirically)
-const float ROTATION_WHEEL_RADIUS = 5.7;
+const float ROTATION_WHEEL_RADIUS = 2.5;
 const float Y_AXIS_WHEEL_RADIUS = 1.9;
 const float X_AXIS_WHEEL_RADIUS = 0.6;
 const float ROTATION_CONVERSION_FACTOR = 2.0*PI*ROTATION_WHEEL_RADIUS/360.0; 
@@ -157,14 +157,15 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 		clockwise = !clockwise; //change direction
 		numRotations = 0;
 	}
-
 	MSMMotorEncoderReset(mmotor_S1_1);
 	if (clockwise)
 		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
 	else
 		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
-
-	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+	//wait1Msec(10000); //test
+	while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe
+	{}
+	//while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
 	MSMotorStop(mmotor_S1_1);
 	
@@ -436,10 +437,7 @@ task main()
 		wait1Msec(50);
 		int num = 0;
 		bool clock = true;
-		//rotateGreenhouse(num, clock);
-		MSMMotor(mmotor_S1_1, 100);
-		wait1Msec(10000);
-		MSMotorStop(mmotor_S1_1); //stop pump
+		rotateGreenhouse(num, clock);
 
 		closeFilePC(fout);
 		closeFilePC(config);
