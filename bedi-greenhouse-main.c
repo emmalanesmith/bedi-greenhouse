@@ -91,7 +91,7 @@ bool resetWaterCycle()
 	float startTime = time1[T1];
 	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
 	
-	motor[motorC] = -AXIS_SPEED; //x-axis
+	motor[motorC] = -X_AXIS_SPEED; //x-axis
 	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
 	motor[motorC] = 0;
@@ -101,7 +101,7 @@ bool resetWaterCycle()
 	if (executed)
 	{
 		startTime = time1[T1];
-		motor[motorD] = -AXIS_SPEED; //y-axis
+		motor[motorD] = -Y_AXIS_SPEED; //y-axis
 		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
 		{}
 		motor[motorD] = 0;
@@ -128,11 +128,11 @@ void readUserSettings(TFileHandle& config, string& plantName, float* settings)
 	readFloatPC(config, *(settings++));
 	
 	readTextPC(config, header);
-	readIntPC(config, *(settings++));
+	readFloatPC(config, *(settings++));
 	readTextPC(config, header);
-	readIntPC(config, *(settings++));
+	readFloatPC(config, *(settings++));
 	readTextPC(config, header);
-	readIntPC(config, *(settings++));
+	readFloatPC(config, *(settings++));
 }
 
 /*
@@ -185,7 +185,8 @@ bool activateWaterCycle()
 
 	//activate 2D axis
 	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
-	motor[motorC] = motor[motorD] = AXIS_SPEED;
+	motor[motorC] = X_AXIS_SPEED;
+	motor[motorD] = Y_AXIS_SPEED;
 	float yStartTime = time1[T1]; //fail safe
 	while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME)) //fail-safe
 	{
