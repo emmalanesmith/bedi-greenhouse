@@ -43,10 +43,10 @@ const int AXIS_FAILED = 2;
 const int WAIT_MESSAGE = 2500; 
 
 /*
-MOTOR A: x direction, 2D axis (1)
-MOTOR B: rotation of greenhouse base
-MOTOR C: x direction, 2D axis (2)
-MOTOR D: y direction, 2D axis
+MOTOR A: x direction on 2D axis
+MOTOR B: x direction on 2D axis
+MOTOR C: y direction on 2D axis
+MOTOR D: rotation of greenhouse base
 MULTIPLEXER M1: peristaltic pump
 */
 
@@ -99,22 +99,22 @@ bool resetWaterCycle()
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
+	nMotorEncoder[motorC] = nMotorEncoder[motorB] = nMotorEncoder[motorA] = 0;
 	
-	motor[motorC] = motor[motorA] = -X_AXIS_SPEED; //x-axis
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
+	motor[motorB] = motor[motorA] = -X_AXIS_SPEED; //x-axis
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
-	motor[motorC] = motor[motorA] = 0;
+	motor[motorB] = motor[motorA] = 0;
 	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
 		executed = false;
 
 	if (executed)
 	{
 		startTime = time1[T1];
-		motor[motorD] = -Y_AXIS_SPEED; //y-axis
-		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
+		motor[motorC] = -Y_AXIS_SPEED; //y-axis
+		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
 		{}
-		motor[motorD] = 0;
+		motor[motorC] = 0;
 		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
@@ -162,15 +162,15 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 		numRotations = 0;
 	}
 
-	nMotorEncoder[motorB] = 0;
+	nMotorEncoder[motorD] = 0;
 	if (clockwise)
-		motor[motorB] = ROTATION_SPEED;
+		motor[motorD] = ROTATION_SPEED;
 	else
-		motor[motorB] = -ROTATION_SPEED;
+		motor[motorD] = -ROTATION_SPEED;
 
-	while((abs(nMotorEncoder[motorB])*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+	while((abs(nMotorEncoder[motorD])*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
-	motor[motorB] = 0;
+	motor[motorD] = 0;
 	
 	if (time1[T1] - startTime > MAX_ROTATION_TIME)
 		executed = false;
@@ -194,21 +194,21 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
-	motor[motorC] = motor[motorA] = X_AXIS_SPEED;
-	motor[motorD] = Y_AXIS_SPEED;
+	nMotorEncoder[motorC] = nMotorEncoder[motorB] = nMotorEncoder[motorA] = 0;
+	motor[motorB] = motor[motorA] = X_AXIS_SPEED;
+	motor[motorC] = Y_AXIS_SPEED;
 	float xStartTime = time1[T1]; //fail safe
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
 	{
 		float yStartTime = time1[T1];
-		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
+		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
 		{}
-		motor[motorD] *= -1;
-		nmotorEncoder[motorD] = 0;
+		motor[motorC] *= -1;
+		nmotorEncoder[motorC] = 0;
 		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
-	motor[motorC] = motor[motorA] = motor[motorD] = 0; //stop axis
+	motor[motorC] = motor[motorA] = motor[motorB] = 0; //stop axis
 	MSMotorStop(mmotor_S1_1); //stop pump
 	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - xStartTime > MAX_X_AXIS_TIME))
 		executed = false;
@@ -410,7 +410,7 @@ void activateGreenhouse(float* settings, string plantName, int* date)
 void safeShutDown()
 {
 	MSMotorStop(mmotor_S1_1); //stop pump
-	motor[motorB] = 0; //stop rotation
+	motor[motorD] = 0; //stop rotation
 	resetWaterCycle();
 	//generateFailFile();
 }
