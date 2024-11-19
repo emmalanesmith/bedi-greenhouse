@@ -431,6 +431,14 @@ task main()
 		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0}; //water cycle interval, rotation cycle interval, day, month, year, start hour, start minute, am/pm (0/1), current hour, current minute
 		readUserSettings(config, plantName, settings);
 
+		/*
+		TESTING
+		*/
+		while (!checkFillLevel()) //no water
+		{
+			displayFillLevel();
+		}
+
 		closeFilePC(fout);
 		closeFilePC(config);
 	}
