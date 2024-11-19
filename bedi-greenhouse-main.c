@@ -81,7 +81,8 @@ void displayFillLevel()
 	else
 		displayTextLine(5, "Empty water tank. Please add water.");
 }
-
+//HERE
+/*
 //Returns time when pump started
 float startPump()
 {
@@ -120,7 +121,7 @@ bool resetWaterCycle()
 	}
 	return executed;
 }
-
+*/ //HERE
 /*
 Reads in user array and saves settings
 settings[0]: water cycle interval, settings[1]: rotation cycle interval
@@ -145,6 +146,8 @@ void readUserSettings(TFileHandle& config, string& plantName, float* settings)
 	readFloatPC(config, *(settings++));
 }
 
+//HERE
+/*
 /*
 Powers the motors to turn 90 degrees (at ROTATION_SPEED)
 Switches directions after 180 degrees (MAX_ROTATIONS)
@@ -414,7 +417,7 @@ void safeShutDown()
 	resetWaterCycle();
 	//generateFailFile();
 }
-
+*/ //HERE
 task main()
 {
 	clearTimer(T1);
