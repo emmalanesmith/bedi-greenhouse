@@ -6,6 +6,7 @@ Last Updated: 11/18/2024
 */
 
 #include "PC_FileIO.c"
+#include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
 const float MAX_PUMP_TIME = 0.0; //set empirically*******************
@@ -42,18 +43,26 @@ const int AXIS_FAILED = 2;
 const int WAIT_MESSAGE = 2500; 
 
 /*
-MOTOR A: peristaltic pump
+MOTOR A: x direction, 2D axis (1)
 MOTOR B: rotation of greenhouse base
-MOTOR C: x direction, 2D axis
+MOTOR C: x direction, 2D axis (2)
 MOTOR D: y direction, 2D axis
+MULTIPLEXER M1: peristaltic pump
 */
 
+/*
+SENSOR 1: colour sensor
+SENSOR 2: multiplexer
+*/
 void configureSensors()
 {
 	SensorType[S1] = sensorEV3_Color;
 	wait1Msec(50);
 	SensorMode[S1] = modeEV3Color_Color;
 	wait1Msec(50);
+	// initialize, for the multiplexer connected to S2
+	SensorType[S2] = sensorI2CCustom;
+	MSMMUXinit();
 }
 
 bool checkFillLevel()
@@ -76,7 +85,7 @@ void displayFillLevel()
 float startPump()
 {
 	float startTime = time1[T1];
-	motor[motorA] = PUMP_SPEED;
+	MSMMotor(mmotor_S1_1, PUMP_SPEED);
 	return startTime;
 }
 
@@ -89,12 +98,12 @@ bool resetWaterCycle()
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
+	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
 	
-	motor[motorC] = -X_AXIS_SPEED; //x-axis
+	motor[motorC] = motor[motorA] = -X_AXIS_SPEED; //x-axis
 	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
-	motor[motorC] = 0;
+	motor[motorC] = motor[motorA] = 0;
 	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
 		executed = false;
 
@@ -184,8 +193,8 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
-	motor[motorC] = X_AXIS_SPEED;
+	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
+	motor[motorC] = motor[motorA] = X_AXIS_SPEED;
 	motor[motorD] = Y_AXIS_SPEED;
 	float yStartTime = time1[T1]; //fail safe
 	while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME)) //fail-safe
@@ -194,11 +203,13 @@ bool activateWaterCycle()
 		while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME))
 		{}
 		motor[motorC] *= -1;
-		nMotorEncoder[motorC] = 0;
+		motor[motorA] *= -1;
+		nMotorEncoder[motorC] = nMotorEncoder[motorA] = 0;
 		if (time1[T1] - xStartTime > MAX_X_AXIS_TIME)
 			executed = false;
 	}
-	motor[motorC] = motor[motorD] = motor[motorA] = 0; //stop axis and pump
+	motor[motorC] = motor[motorA] = motor[motorD] = 0; //stop axis
+	MSMotorStop(mmotor_S1_1); //stop pump
 	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - yStartTime > MAX_Y_AXIS_TIME))
 		executed = false;
 	return executed;
@@ -398,7 +409,7 @@ void activateGreenhouse(float* settings, string plantName, int* date)
 
 void safeShutDown()
 {
-	motor[motorA] = 0; //stop pump
+	MSMotorStop(mmotor_S1_1); //stop pump
 	motor[motorB] = 0; //stop rotation
 	resetWaterCycle();
 	//generateFailFile();
