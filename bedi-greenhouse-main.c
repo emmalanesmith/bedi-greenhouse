@@ -16,14 +16,20 @@ const float MAX_ROTATION_TIME = 0.0;
 const float ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
 const int ROTATION_SPEED = 25; //set empirically
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
-const float ROTATION_CONVERSION_FACTOR = 0.0; //set empirically
+
+//Wheels + Conversion factors
+const float ROTATION_WHEEL_RADIUS = 5.7; //set empirically
+const float Y_AXIS_WHEEL_RADIUS = 1.9; //^
+const float X_AXIS_WHEEL_RADIUS = 0.6; //^
+const float ROTATION_CONVERSION_FACTOR = 2*PI*ROTATION_WHEEL_RADIUS/360; 
+const float Y_AXIS_CONVERSION_FACTOR = 2*PI*Y_AXIS_WHEEL_RADIUS/360;
+const float X_AXIS_CONVERSION_FACTOR = 2*PI*X_AXIS_WHEEL_RADIUS/360;
 
 //Water cycle
 const int PUMP_SPEED = 25; //set empirically
-const float AXIS_CONVERSION_FACTOR = 0.0; //set empirically, might need two?
-const float Y_AXIS_LENGTH = 0.0; //^
-const float X_AXIS_LENGTH = 0.0; //^
-const float AXIS_SPEED = 25; //^
+const float Y_AXIS_LENGTH = 12.0; //actual = 14.0 cm 
+const float X_AXIS_LENGTH = 16.0; //actual = 18.0 cm 
+const float AXIS_SPEED = 25; //set empirically
 
 /*
 MOTOR A: peristaltic pump
@@ -75,13 +81,13 @@ bool resetWaterCycle()
 	float startTime = time1[T1];
 	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
 	
-	motor[motorC] = -AXIS_SPEED;
-	while((abs(nMotorEncoder[motorC])*AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
+	motor[motorC] = -AXIS_SPEED; //x-axis
+	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
 	{}
 	motor[motorC] = 0;
 
-	motor[motorD] = -AXIS_SPEED;
-	while((abs(nMotorEncoder[motorD])*AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
+	motor[motorD] = -AXIS_SPEED; //y-axis
+	while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
 	{}
 	motor[motorD] = 0;
 
