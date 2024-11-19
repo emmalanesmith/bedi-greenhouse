@@ -245,8 +245,8 @@ void setStartTime(float* settings)
 	while (timeSet != 2)
 	{
 		// generate updated time after toggling
-		if (minute< 10) displayTextLine(4, "%d:0%d %s", hour, minute, period);
-		else displayTextLine(4, "%d:%d %s", hour, minute, period);
+		if (minute< 10) displayTextLine(4, "%.0f:0%.0f %s", hour, minute, period);
+		else displayTextLine(4, "%.0f:%.0f %s", hour, minute, period);
 
 		// toggle settings
 		while(!getButtonPress(buttonAny))
@@ -279,8 +279,8 @@ void setStartTime(float* settings)
 		if (period == 0) periodDisplay = "a.m.";
 		else periodDisplay = "p.m.";
 		// generate updated time after toggling
-		if (minute< 10) displayTextLine(4, "%d:0%d %s", hour, minute, periodDisplay);
-		else displayTextLine(4, "%d:%d %s", hour, minute, periodDisplay);
+		if (minute< 10) displayTextLine(4, "%.0f:0%.0f %s", hour, minute, periodDisplay);
+		else displayTextLine(4, "%.0f:%.0f %s", hour, minute, periodDisplay);
 
 		if (getButtonPress(buttonEnter)) timeSet = 3;
 
@@ -360,24 +360,24 @@ void generateStats(string plantName, float* settings)
 	// display stats
 	displayTextLine(4, "Plant name: %s", plantName);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Total run time in milliseconds: %d", runTime);
+	displayTextLine(4, "Total run time in milliseconds: %.0f", runTime);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of water cycles: %d", numWaterCycles);
+	displayTextLine(4, "Number of water cycles: %.0f", numWaterCycles);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of rotations: %d", numRotations);
+	displayTextLine(4, "Number of rotations: %.0f", numRotations);
 	wait1Msec(WAIT_MESSAGE);
 
 	// correct display of date
-	if (month<10) displayTextLine(4, "%d/0%d/%d", month, day, year);
-	else displayTextLine(4, "%d/%d/%d", month, day, year);
+	if (month<10) displayTextLine(4, "%.0f/0%.0f/%.0f", month, day, year);
+	else displayTextLine(4, "%.0f/%.0f/%.0f", month, day, year);
 	wait1Msec(WAIT_MESSAGE);
 
 	// correct display of time
 	string periodDisplay = " ";
 	if (period == 0) periodDisplay = "a.m.";
 	else periodDisplay = "p.m.";
-	if (newMinute < 10) displayTextLine(4, "%d:0%d %s", newHour, newMinute, periodDisplay);
-	else displayTextLine(4, "%d:%d %s", newHour, periodDisplay);
+	if (newMinute < 10) displayTextLine(4, "%.0f:0%.0f %s", newHour, newMinute, periodDisplay);
+	else displayTextLine(4, "%.0f:%.0f %s", newHour, periodDisplay);
 	wait1Msec(WAIT_MESSAGE);
 
 }
