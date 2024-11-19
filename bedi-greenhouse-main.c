@@ -197,21 +197,20 @@ bool activateWaterCycle()
 	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
 	motor[motorC] = motor[motorA] = X_AXIS_SPEED;
 	motor[motorD] = Y_AXIS_SPEED;
-	float yStartTime = time1[T1]; //fail safe
-	while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME)) //fail-safe
+	float xStartTime = time1[T1]; //fail safe
+	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
 	{
-		float xStartTime = time1[T1]; //fail safe
-		while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME))
+		float yStartTime = time1[T1];
+		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
 		{}
-		motor[motorC] *= -1;
-		motor[motorA] *= -1;
-		nMotorEncoder[motorC] = nMotorEncoder[motorA] = 0;
-		if (time1[T1] - xStartTime > MAX_X_AXIS_TIME)
+		motor[motorD] *= -1;
+		nmotorEncoder[motorD] = 0;
+		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
 	motor[motorC] = motor[motorA] = motor[motorD] = 0; //stop axis
 	MSMotorStop(mmotor_S1_1); //stop pump
-	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - yStartTime > MAX_Y_AXIS_TIME))
+	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - xStartTime > MAX_X_AXIS_TIME))
 		executed = false;
 	return executed;
 	//UPDATE: resetWaterCycle will be kept seperate**
