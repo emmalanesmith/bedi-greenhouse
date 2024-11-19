@@ -83,12 +83,12 @@ bool resetWaterCycle()
 	nMotorEncoder[motorC] = nMotorEncoder[motorD] = 0;
 	
 	motor[motorC] = -AXIS_SPEED; //x-axis
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
+	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
 	motor[motorC] = 0;
 
 	motor[motorD] = -AXIS_SPEED; //y-axis
-	while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_AXIS_TIME))
+	while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
 	{}
 	motor[motorD] = 0;
 
