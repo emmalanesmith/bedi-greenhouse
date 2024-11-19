@@ -51,24 +51,24 @@ MULTIPLEXER M1: peristaltic pump
 */
 
 /*
-SENSOR 1: colour sensor
-SENSOR 2: multiplexer
+SENSOR 1: multiplexer
+SENSOR 2: colour sensor
 */
 void configureSensors()
 {
-	SensorType[S1] = sensorEV3_Color;
-	wait1Msec(50);
-	SensorMode[S1] = modeEV3Color_Color;
-	wait1Msec(50);
 	// initialize, for the multiplexer connected to S2
-	SensorType[S2] = sensorI2CCustom;
+	SensorType[S1] = sensorI2CCustom;
 	MSMMUXinit();
+	wait1Msec(50);
+	SensorType[S2] = sensorEV3_Color;
+	wait1Msec(50);
+	SensorMode[S2] = modeEV3Color_Color;
 	wait1Msec(50);
 }
 
 bool checkFillLevel()
 {
-	if (SensorMode[S1] == (int)colorWhite)
+	if (SensorMode[S2] == (int)colorWhite)
 		return false;
 	else
 		return true;
