@@ -102,25 +102,23 @@ Reads in user array and saves settings
 settings[0]: water cycle interval, settings[1]: rotation cycle interval
 date[0]: day, date[1]: month, date[2]: year
 */
-void readUserSettings(TFileHandle& config, string& plantName, float settings[], int date[])
+void readUserSettings(TFileHandle& config, string& plantName, float* settings, int* date)
 {
 	string header = " "; //ignore headers on config file
 	readTextPC(config, header);
 	readTextPC(config, plantName);
 	
 	readTextPC(config, header);
-	readFloatPC(config, settings[0]);
+	readFloatPC(config, *settings);
 	readTextPC(config, header);
-	readFloatPC(config, settings[1]);
+	readFloatPC(config, *(settings++));
 	
 	readTextPC(config, header);
-	readIntPC(config, date[0]);
+	readIntPC(config, *date);
 	readTextPC(config, header);
-	readIntPC(config, date[1]);
+	readIntPC(config, *(date++));
 	readTextPC(config, header);
-	readIntPC(config, date[2]);
-
-	return plantName;
+	readIntPC(config, *(date++));
 }
 
 /*
@@ -196,11 +194,11 @@ bool activateWaterCycle()
 }
 
 //meeji
-void generateStats(string plantName, float settings[], int date[])
+void generateStats(string plantName, float* settings, int* date)
 {}
 
 //kira
-void generateEndFile(TFileHandle& fout, string plantName, float settings[], int date[])
+void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* date)
 {
 	/*
  	writeEndlPC(fout);
@@ -213,11 +211,11 @@ void generateEndFile(TFileHandle& fout, string plantName, float settings[], int 
 }
 
 //kira
-void generateFailFile(TFileHandle& fout, string plantName, float settings[], int date[], int task)
+void generateFailFile(TFileHandle& fout, string plantName, float* settings, int* date, int task)
 {}
 
 //emma
-void activateGreenhouse(float settings[], string plantName, int date[])
+void activateGreenhouse(float* settings, string plantName, int* date)
 {}
 
 void safeShutDown()
