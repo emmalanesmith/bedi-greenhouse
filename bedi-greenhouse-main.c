@@ -63,6 +63,7 @@ void configureSensors()
 	// initialize, for the multiplexer connected to S2
 	SensorType[S2] = sensorI2CCustom;
 	MSMMUXinit();
+	wait1Msec(50);
 }
 
 bool checkFillLevel()
