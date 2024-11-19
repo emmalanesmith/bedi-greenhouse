@@ -80,6 +80,7 @@ void displayFillLevel()
 		displayTextLine(5, "Water available in tank.");
 	else
 		displayTextLine(5, "Empty water tank. Please add water.");
+	wait1M(5000);
 }
 
 //Returns time when pump started
