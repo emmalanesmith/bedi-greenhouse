@@ -16,7 +16,7 @@ const float MAX_ROTATION_TIME = 0.0; //set empirically**********************
 
 //Rotation constants (found empirically)
 const float ROTATION_DISTANCE = 24.1;
-const int ROTATION_SPEED = 25; //set empirically******************************
+const int ROTATION_SPEED = 5;
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
 //Wheel radii and conversion factors (found empirically)
@@ -28,7 +28,7 @@ const float Y_AXIS_CONVERSION_FACTOR = 2.0*PI*Y_AXIS_WHEEL_RADIUS/360.0;
 const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
-const int PUMP_SPEED = 25; //set empirically**************
+const int PUMP_SPEED = 100;
 const float Y_AXIS_LENGTH = 12.0; //actual = 14.0 cm 
 const float X_AXIS_LENGTH = 16.0; //actual = 18.0 cm 
 const float X_AXIS_SPEED = 10.0;
@@ -46,8 +46,8 @@ const int WAIT_MESSAGE = 2500;
 MOTOR A: x direction on 2D axis
 MOTOR B: x direction on 2D axis
 MOTOR C: y direction on 2D axis
-MOTOR D: rotation of greenhouse base
-MULTIPLEXER M1: peristaltic pump
+MOTOR D: peristaltic pump
+MULTIPLEXER M1: rotation of greenhouse base
 */
 
 /*
@@ -56,10 +56,6 @@ SENSOR 2: colour sensor
 */
 void configureSensors()
 {
-	// initialize, for the multiplexer connected to S2
-	SensorType[S1] = sensorI2CCustom;
-	MSMMUXinit();
-	wait1Msec(50);
 	SensorType[S2] = sensorEV3_Color;
 	wait1Msec(50);
 	SensorMode[S2] = modeEV3Color_Color;
@@ -68,7 +64,7 @@ void configureSensors()
 
 bool checkFillLevel()
 {
-	if (SensorMode[S2] == (int)colorWhite)
+	if (SensorValue[S2] == (int)colorWhite)
 		return false;
 	else
 		return true;
@@ -79,15 +75,15 @@ void displayFillLevel()
 	if (checkFillLevel())
 		displayTextLine(5, "Water available in tank.");
 	else
-		displayTextLine(5, "Empty water tank. Please add water.");
-	wait1M(5000);
+		displayTextLine(5, "Empty water tank.");
+		displayTextLine(6, "Please add water.");
 }
 
 //Returns time when pump started
 float startPump()
 {
 	float startTime = time1[T1];
-	MSMMotor(mmotor_S1_1, PUMP_SPEED);
+	motor[motorD] = PUMP_SPEED;
 	return startTime;
 }
 
@@ -162,15 +158,15 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 		numRotations = 0;
 	}
 
-	nMotorEncoder[motorD] = 0;
+	MSMMotorEncoderReset(mmotor_S1_1);
 	if (clockwise)
-		motor[motorD] = ROTATION_SPEED;
+		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
 	else
-		motor[motorD] = -ROTATION_SPEED;
+		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
 
-	while((abs(nMotorEncoder[motorD])*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
-	motor[motorD] = 0;
+	MSMotorStop(mmotor_S1_1);
 	
 	if (time1[T1] - startTime > MAX_ROTATION_TIME)
 		executed = false;
@@ -209,7 +205,7 @@ bool activateWaterCycle()
 			executed = false;
 	}
 	motor[motorC] = motor[motorA] = motor[motorB] = 0; //stop axis
-	MSMotorStop(mmotor_S1_1); //stop pump
+	motor[motorD] = 0; //stop pump
 	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - xStartTime > MAX_X_AXIS_TIME))
 		executed = false;
 	return executed;
@@ -409,8 +405,8 @@ void activateGreenhouse(float* settings, string plantName, int* date)
 
 void safeShutDown()
 {
-	MSMotorStop(mmotor_S1_1); //stop pump
-	motor[motorD] = 0; //stop rotation
+	motor[motorD] = 0; //stop pump
+	MSMotorStop(mmotor_S1_1); //stop rotation
 	resetWaterCycle();
 	//generateFailFile();
 }
@@ -434,10 +430,16 @@ task main()
 		/*
 		TESTING
 		*/
-		while (!checkFillLevel()) //no water
-		{
-			displayFillLevel();
-		}
+		// initialize, for the multiplexer connected to S2
+		SensorType[S1] = sensorI2CCustom;
+		MSMMUXinit();
+		wait1Msec(50);
+		int num = 0;
+		bool clock = true;
+		//rotateGreenhouse(num, clock);
+		MSMMotor(mmotor_S1_1, 100);
+		wait1Msec(10000);
+		MSMotorStop(mmotor_S1_1); //stop pump
 
 		closeFilePC(fout);
 		closeFilePC(config);
