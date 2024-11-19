@@ -2,18 +2,19 @@
 Plant Bed(i) Greenhouse:
 An automated plant incubator for bringing up houseplants, powered by a LEGO Mindstorms EV3 Robot.
 By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
-Last Updated: 11/14/2024
+Last Updated: 11/18/2024
 */
 
 #include "PC_FileIO.c"
 
 //Fail-safe max times
-const float MAX_PUMP_TIME = 0.0; //set empirically
-const float MAX_AXIS_TIME = 0.0;
-const float MAX_ROTATION_TIME = 0.0;
+const float MAX_PUMP_TIME = 0.0; //set empirically 
+const float MAX_X_AXIS_TIME = 7.5; // @ speed 10 //change MAX_AXIS_TIME in code to match
+const float MAX_Y_AXIS_TIME = 9.1; // @ speed 3 //change MAX_AXIS_TIME in code to match
+const float MAX_ROTATION_TIME = 0.0; //set empirically
 
 //Rotation
-const float ROTATION_DISTANCE = 0.0; //set empirically (for 90 degrees rotation)
+const float ROTATION_DISTANCE = 24.1; //set empirically (for 90 degrees rotation)
 const int ROTATION_SPEED = 25; //set empirically
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
