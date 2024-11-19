@@ -38,6 +38,9 @@ const int ROTATION_FAILED = 0;
 const int PUMP_FAILED = 1;
 const int AXIS_FAILED = 2;
 
+//Wait time between messages in milliseconds
+const int WAIT_MESSAGE = 2500; 
+
 /*
 MOTOR A: peristaltic pump
 MOTOR B: rotation of greenhouse base
@@ -200,8 +203,166 @@ bool activateWaterCycle()
 }
 
 //meeji
-void generateStats(string plantName, float* settings, int* date)
-{}
+void setStartTime(float* waterTime)
+{
+	float* hourP = (6 + waterTime);
+	float hour = *hourP;
+	float minute = *(++hourP);
+	float period = *(++hourP);
+	
+	// prompt user
+	displayTextLine(3, "Please enter the current time:");
+	wait1Msec(WAIT_MESSAGE);
+	displayTextLine(3, "Use up/down arrows change #s");
+	displayTextLine(4, "Use enter to go next");
+	wait1Msec(WAIT_MESSAGE);
+	displayTextLine(3, "Please enter the current time:");
+
+	// generate time as user changes it
+	int timeSet = 0;
+	/*
+		setTime = 0; Change hours
+		setTime = 1; Change minutes
+		setTime = 2; Change period (a.m./p.m.)
+	*/
+
+	while (timeSet != 2)
+	{
+		// generate updated time after toggling
+		if (minute< 10) displayTextLine(4, "%d:0%d %s", hour, minute, period);
+		else displayTextLine(4, "%d:%d %s", hour, minute, period);
+
+		// toggle settings
+		while(!getButtonPress(buttonAny))
+		{}
+		if (getButtonPress(buttonDown))
+		{
+			if (timeSet == 0 && hour>1) hour--;
+			else if (timeSet == 1 && minute>0) minute--;
+		}
+		else if (getButtonPress(buttonUp))
+		{
+			if (timeSet == 0 && hour < 12) hour++;
+			else if (timeSet == 1 && minute < 59) minute++;
+		}
+		else if (getButtonPress(buttonEnter))timeSet++;
+		wait1Msec(500);
+	}
+
+	while (timeSet == 2)
+	{
+		while(!getButtonPress(buttonAny))
+		{}
+		if (getButtonPress(buttonUp) || getButtonPress(buttonDown))
+		{
+			if (period == 0) period = 1;
+			else period = 0;
+		}
+		
+		string periodDisplay = " ";
+		if (period == 0) periodDisplay = "a.m.";
+		else periodDisplay = "p.m.";
+		// generate updated time after toggling
+		if (minute< 10) displayTextLine(4, "%d:0%d %s", hour, minute, periodDisplay);
+		else displayTextLine(4, "%d:%d %s", hour, minute, periodDisplay);
+
+		if (getButtonPress(buttonEnter)) timeSet = 3;
+
+		wait1Msec(500);
+	}
+}
+
+//meeji
+void generateStats(string plantName, float* timeWaterP)
+{
+	float timeWater = *timeWaterP;
+	float timeRotation = *(++timeWaterP);
+	float day = *(++timeWaterP);
+	float month = *(++timeWaterP);
+	float year = *(++timeWaterP);
+	float hour = *(++timeWaterP);
+	float minute = *(++timeWaterP);
+	float period = *(++timeWaterP);
+	float newHour = *(++timeWaterP);
+	float newMinute = *(++timeWaterP);
+	float runTime = time1[T1];
+
+	int daysInMonth[12] = {31, 28,31, 30, 31, 30, 31 ,31 ,30, 31, 30, 31}; // index corresponds to month-1
+
+	// calculations for number of water cycle and rotations
+	int numWaterCycles = runTime / timeWater;
+	int numRotations = runTime / timeRotation;
+
+	//Calculating current time and date
+	if (period == 1) hour += 12;
+
+	// counting total number of full days, sets correct month and day
+	newMinute = runTime/1000/60 + minute; // total minutes
+	newHour = (newMinute/60) + hour; // total hours
+	newMinute -= ((newMinute/60)*60); // final number of minutes
+	day += (newHour/24); // total days
+	wait1Msec(10000);
+	newHour -= ((newHour/24)*24);// final number of hours
+
+	wait1Msec(10000);
+
+	// changing a.m./p.m.
+	if (newHour >= 0 && newHour <= 11)
+	{
+		period = 0;
+	}
+	else if (newHour >= 12)
+	{
+		period = 1;
+	}
+
+	// convert from 24h to 12h clock
+	if (newHour == 0) newHour = 12;
+	if (newHour > 12) newHour -= 12;
+
+	else period = 0;
+	bool correctDate = false;
+	while (!correctDate)
+	{
+		if (day > daysInMonth[month-1])
+		{
+			day -= daysInMonth[month-1];
+			month++;
+		}
+		if (month > 12)
+		{
+			year++;
+			month = 1;
+		}
+
+		if (day <= daysInMonth[month-1] && month <= 12) correctDate = true;
+	}
+
+
+	// display stats
+	displayTextLine(4, "Plant name: %s", plantName);
+	wait1Msec(WAIT_MESSAGE);
+	displayTextLine(4, "Total run time in milliseconds: %d", runTime);
+	wait1Msec(WAIT_MESSAGE);
+	displayTextLine(4, "Number of water cycles: %d", numWaterCycles);
+	wait1Msec(WAIT_MESSAGE);
+	displayTextLine(4, "Number of rotations: %d", numRotations);
+	wait1Msec(WAIT_MESSAGE);
+
+	// correct display of date
+	if (month<10) displayTextLine(4, "%d/0%d/%d", month, day, year);
+	else displayTextLine(4, "%d/%d/%d", month, day, year);
+	wait1Msec(WAIT_MESSAGE);
+
+	// correct display of time
+	string periodDisplay = " ";
+	if (period == 0) periodDisplay = "a.m.";
+	else periodDisplay = "p.m.";
+	if (newMinute < 10) displayTextLine(4, "%d:0%d %s", newHour, newMinute, periodDisplay);
+	else displayTextLine(4, "%d:%d %s", newHour, periodDisplay);
+	wait1Msec(WAIT_MESSAGE);
+
+}
 
 //kira
 void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* date)
@@ -249,7 +410,7 @@ task main()
 	if (configOpen && foutOpen)
 	{
 		string plantName = " ";
-		float settings[2] = {0.0, 0.0}; //water cycle interval, rotation cycle interval
+		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0}; //water cycle interval, rotation cycle interval, day, month, year, start hour, start minute, am/pm (0/1), current hour, current minute
 		int date[3] = {0, 0, 0}; //day, month, year
 		plantName = readUserSettings(config, plantName, settings, date);
 
