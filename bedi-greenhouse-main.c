@@ -390,8 +390,10 @@ void generateStats(string plantName, float* settings)
 
 }
 
-//kira
-void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* date)
+/*
+Generates end file based on stats from generateStats(string, float*)
+*/
+void generateEndFile(TFileHandle& fout, string plantName, float* settings)
 {
 	/*
  	writeEndlPC(fout);
@@ -401,7 +403,7 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
     	writeFloatPC(fout, "%.2f", f); //this is how they do it on the doc but i feel like it's writeTextPC not writeFloatPC
      	writeIntPC(fout, i);
 	*/
-	generateStats(plantName, settings, date);
+	generateStats(plantName, settings);
   	string PLANT_NAME = "PLANT NAME:";
   	string WATER_CYCLE = "WATER CYCLE INTERVAL (milliseconds):";
   	string ROTATION_CYCLE = "ROTATION CYCLE INTERVAL (milliseconds):";
@@ -410,25 +412,25 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
   	string YEAR = "YEAR (####)";
 	string TIME = "END TIME:"
   	
-	writeTextPC(fout, PLANT_NAME);
+	writeTextPC(fout, "PLANT NAME:");
 	writeEndlPC(fout);
 	writeTextPC(fout, plantName);
  	writeEndlPC(fout);
 	writeEndlPC(fout);
 
-   	writeTextPC(fout, WATER_CYCLE);
+   	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
 	writeEndlPC(fout);
     	writeFloatPC(fout, settings[0]);
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-    	writeTextPC(fout, ROTATION_CYCLE);
+    	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
 	writeEndlPC(fout);
     	writeFloatPC(fout, settings[1]);
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-   	writeTextPC(fout, DAY);
+   	writeTextPC(fout, "DAY (##)");
 	writeEndlPC(fout);
 	if (settings[2] < 10.0)
 	{
@@ -442,23 +444,23 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-   	writeTextPC(fout, MONTH);
+   	writeTextPC(fout, "MONTH (##)");
 	writeEndlPC(fout);
     	writeFloatPC(fout, "%.0f", settings[3]);
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-    	writeTextPC(fout, YEAR);
+    	writeTextPC(fout, "YEAR (####)");
 	writeEndlPC(fout);
     	writeFloatPC(fout, "%.0f", settings[4]);
 	writeEndlPC(fout);  
 	writeEndlPC(fout);
 
-	writeTextPC(fout, TIME);
+	writeTextPC(fout, "END TIME:");
 	writeEndlPC(fout);
-	writeFloatPC(fout,  "%.0f", settings[9]);
+	writeFloatPC(fout,  "%.0f", settings[8]);
 	writeTextPC(fout, ":");
-	writeFloatPC(fout, "%.0f", settings[8]);
+	writeFloatPC(fout, "%.0f", settings[9]);
 
 	if (settings[7] == 0)
 	{
@@ -471,7 +473,10 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
 
 }
 
-//kira
+/*
+Generates fail file based on generateEndFile(TFileHandle&, string, float*)
+Adds message about why the robot failed
+*/
 void generateFailFile(TFileHandle& fout, string plantName, float* settings, int taskFailed)
 {
 	string ROTATION_FAIL = "ROTATION FAILED";
@@ -483,18 +488,16 @@ void generateFailFile(TFileHandle& fout, string plantName, float* settings, int 
 
 	if (taskFailed == 0)
 	{
-		writeTextPC(fout, ROTATION_FAIL);
+		writeTextPC(fout, "ROTATION FAILED");
 	}
 	else if (taskFailed == 1)
 	{
-		writeTextPC(fout, PUMP_FAIL);
+		writeTextPC(fout, "PUMP FAILED");
 	}
 	else 
 	{
-		writeTextPC(fout, AXIS_FAIL);
+		writeTextPC(fout, "AXIS FAILED");
 	}
-	/* ROTATION_FAILED = 0 PUMP_FAILED = 1 AXIS_FAILED = 2*/
-	
 }
 
 //emma
