@@ -383,7 +383,7 @@ void generateStats(string plantName, float* settings)
 }
 
 //kira
-void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* date)
+void generateEndFile(TFileHandle& fout, string plantName, float* settings)
 {
 	/*
  	writeEndlPC(fout);
@@ -393,14 +393,14 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
     	writeFloatPC(fout, "%.2f", f); //this is how they do it on the doc but i feel like it's writeTextPC not writeFloatPC
      	writeIntPC(fout, i);
 	*/
-	generateStats(plantName, settings, date);
+	generateStats(plantName, settings);
   	string PLANT_NAME = "PLANT NAME:";
   	string WATER_CYCLE = "WATER CYCLE INTERVAL (milliseconds):";
   	string ROTATION_CYCLE = "ROTATION CYCLE INTERVAL (milliseconds):";
   	string DAY = "DAY (##)";
   	string MONTH = "MONTH (##)";
   	string YEAR = "YEAR (####)";
-	string TIME = "END TIME:"
+	string TIME = "END TIME:";
   	
 	writeTextPC(fout, PLANT_NAME);
 	writeEndlPC(fout);
@@ -486,8 +486,8 @@ void generateFailFile(TFileHandle& fout, string plantName, float* settings, int 
 		writeTextPC(fout, AXIS_FAIL);
 	}
 	/* ROTATION_FAILED = 0 PUMP_FAILED = 1 AXIS_FAILED = 2*/
-	
 }
+	
 
 //emma
 void activateGreenhouse(float* settings, string plantName, int* date)
