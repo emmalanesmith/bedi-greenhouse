@@ -250,8 +250,8 @@ void setStartTime(float* settings)
 	while (timeSet != 2)
 	{
 		// generate updated time after toggling
-		if (minute< 10) displayTextLine(4, "%d:0%d %s", hour, minute, period);
-		else displayTextLine(4, "%d:%d %s", hour, minute, period);
+		if (minute< 10) displayTextLine(4, "%.0f:0%.0f %s", hour, minute, period);
+		else displayTextLine(4, "%.0f:%.0f %s", hour, minute, period);
 
 		// toggle settings
 		while(!getButtonPress(buttonAny))
@@ -284,8 +284,8 @@ void setStartTime(float* settings)
 		if (period == 0) periodDisplay = "a.m.";
 		else periodDisplay = "p.m.";
 		// generate updated time after toggling
-		if (minute< 10) displayTextLine(4, "%d:0%d %s", hour, minute, periodDisplay);
-		else displayTextLine(4, "%d:%d %s", hour, minute, periodDisplay);
+		if (minute< 10) displayTextLine(4, "%.0f:0%.0f %s", hour, minute, periodDisplay);
+		else displayTextLine(4, "%.0f:%.0f %s", hour, minute, periodDisplay);
 
 		if (getButtonPress(buttonEnter)) timeSet = 3;
 
@@ -365,24 +365,24 @@ void generateStats(string plantName, float* settings)
 	// display stats
 	displayTextLine(4, "Plant name: %s", plantName);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Total run time in milliseconds: %d", runTime);
+	displayTextLine(4, "Total run time in milliseconds: %.0f", runTime);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of water cycles: %d", numWaterCycles);
+	displayTextLine(4, "Number of water cycles: %.0f", numWaterCycles);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of rotations: %d", numRotations);
+	displayTextLine(4, "Number of rotations: %.0f", numRotations);
 	wait1Msec(WAIT_MESSAGE);
 
 	// correct display of date
-	if (month<10) displayTextLine(4, "%d/0%d/%d", month, day, year);
-	else displayTextLine(4, "%d/%d/%d", month, day, year);
+	if (month<10) displayTextLine(4, "%.0f/0%.0f/%.0f", month, day, year);
+	else displayTextLine(4, "%.0f/%.0f/%.0f", month, day, year);
 	wait1Msec(WAIT_MESSAGE);
 
 	// correct display of time
 	string periodDisplay = " ";
 	if (period == 0) periodDisplay = "a.m.";
 	else periodDisplay = "p.m.";
-	if (newMinute < 10) displayTextLine(4, "%d:0%d %s", newHour, newMinute, periodDisplay);
-	else displayTextLine(4, "%d:%d %s", newHour, periodDisplay);
+	if (newMinute < 10) displayTextLine(4, "%.0f:0%.0f %s", newHour, newMinute, periodDisplay);
+	else displayTextLine(4, "%.0f:%.0f %s", newHour, periodDisplay);
 	wait1Msec(WAIT_MESSAGE);
 
 }
@@ -398,14 +398,100 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
     	writeFloatPC(fout, "%.2f", f); //this is how they do it on the doc but i feel like it's writeTextPC not writeFloatPC
      	writeIntPC(fout, i);
 	*/
+	generateStats(plantName, settings, date);
+  	string PLANT_NAME = "PLANT NAME:";
+  	string WATER_CYCLE = "WATER CYCLE INTERVAL (milliseconds):";
+  	string ROTATION_CYCLE = "ROTATION CYCLE INTERVAL (milliseconds):";
+  	string DAY = "DAY (##)";
+  	string MONTH = "MONTH (##)";
+  	string YEAR = "YEAR (####)";
+	string TIME = "END TIME:"
+  	
+	writeTextPC(fout, PLANT_NAME);
+	writeEndlPC(fout);
+	writeTextPC(fout, plantName);
+ 	writeEndlPC(fout);
+	writeEndlPC(fout);
 
-	//don't include time
+   	writeTextPC(fout, WATER_CYCLE);
+	writeEndlPC(fout);
+    	writeFloatPC(fout, settings[0]);
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+    	writeTextPC(fout, ROTATION_CYCLE);
+	writeEndlPC(fout);
+    	writeFloatPC(fout, settings[1]);
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+   	writeTextPC(fout, DAY);
+	writeEndlPC(fout);
+	if (settings[2] < 10.0)
+	{
+		writeTextPC(fout, "0");
+	   	writeFloatPC(fout, "%.0f", settings[2]);
+	}
+	else 
+	{
+		writeFloatPC(fout, "%.0f", settings[2]);
+	}
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+   	writeTextPC(fout, MONTH);
+	writeEndlPC(fout);
+    	writeFloatPC(fout, "%.0f", settings[3]);
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+    	writeTextPC(fout, YEAR);
+	writeEndlPC(fout);
+    	writeFloatPC(fout, "%.0f", settings[4]);
+	writeEndlPC(fout);  
+	writeEndlPC(fout);
+
+	writeTextPC(fout, TIME);
+	writeEndlPC(fout);
+	writeFloatPC(fout,  "%.0f", settings[9]);
+	writeTextPC(fout, ":");
+	writeFloatPC(fout, "%.0f", settings[8]);
+
+	if (settings[7] == 0)
+	{
+		writeTextPC(fout, "AM");
+	}
+	else 
+	{
+		writeTextPC(fout, "PM");
+	}		
+
 }
 
 //kira
-void generateFailFile(TFileHandle& fout, string plantName, float* settings, int* date, int taskFailed)
+void generateFailFile(TFileHandle& fout, string plantName, float* settings, int taskFailed)
 {
+	string ROTATION_FAIL = "ROTATION FAILED";
+	string PUMP_FAIL = "PUMP FAILED";
+	string AXIS_FAIL = "AXIS FAILED";
+
+	generateEndFile(fout, plantName, settings);
+	writeEndlPC(fout);
+
+	if (taskFailed == 0)
+	{
+		writeTextPC(fout, ROTATION_FAIL);
+	}
+	else if (taskFailed == 1)
+	{
+		writeTextPC(fout, PUMP_FAIL);
+	}
+	else 
+	{
+		writeTextPC(fout, AXIS_FAIL);
+	}
 	/* ROTATION_FAILED = 0 PUMP_FAILED = 1 AXIS_FAILED = 2*/
+	
 }
 
 //emma
