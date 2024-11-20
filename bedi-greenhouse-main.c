@@ -9,18 +9,18 @@ Last Updated: 11/18/2024
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
-const float MAX_PUMP_TIME = 0.0; //set empirically*******************
-const float MAX_X_AXIS_TIME = 7500;
-const float MAX_Y_AXIS_TIME = 9100;
-const float MAX_ROTATION_TIME = 0.0; //set empirically**********************
+const float MAX_PUMP_TIME = 1000000000.0; //set empirically*******************
+const float MAX_X_AXIS_TIME = 1000000000; //15000
+const float MAX_Y_AXIS_TIME = 1000000000; //9100
+const float MAX_ROTATION_TIME = 1000000000.0; //set empirically**********************
 
 //Rotation constants (found empirically)
-const float ROTATION_DISTANCE = 24.1;
-const int ROTATION_SPEED = 25; //set empirically******************************
+const float ROTATION_DISTANCE = 31.5;
+const int ROTATION_SPEED = 20;
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
 //Wheel radii and conversion factors (found empirically)
-const float ROTATION_WHEEL_RADIUS = 5.7;
+const float ROTATION_WHEEL_RADIUS = 2.5;
 const float Y_AXIS_WHEEL_RADIUS = 1.9;
 const float X_AXIS_WHEEL_RADIUS = 0.6;
 const float ROTATION_CONVERSION_FACTOR = 2.0*PI*ROTATION_WHEEL_RADIUS/360.0; 
@@ -28,10 +28,11 @@ const float Y_AXIS_CONVERSION_FACTOR = 2.0*PI*Y_AXIS_WHEEL_RADIUS/360.0;
 const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
-const int PUMP_SPEED = 25; //set empirically**************
-const float Y_AXIS_LENGTH = 12.0; //actual = 14.0 cm 
-const float X_AXIS_LENGTH = 16.0; //actual = 18.0 cm 
-const float X_AXIS_SPEED = 10.0;
+const int PUMP_SPEED = 100;
+const float Y_AXIS_LENGTH = 8.5; //actual = 14.0 cm 12.0
+const float X_AXIS_LENGTH = 5; //actual = 18.0 cm 16.0
+const float BUFFER_LENGTH = 3.5; //due to change direction
+const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
 //Fail integers (for fail-safe error message)
@@ -43,32 +44,30 @@ const int AXIS_FAILED = 2;
 const int WAIT_MESSAGE = 2500; 
 
 /*
-MOTOR A: x direction, 2D axis (1)
-MOTOR B: rotation of greenhouse base
-MOTOR C: x direction, 2D axis (2)
-MOTOR D: y direction, 2D axis
-MULTIPLEXER M1: peristaltic pump
+MOTOR A: x direction on 2D axis
+MOTOR B: x direction on 2D axis
+MOTOR C: y direction on 2D axis
+MOTOR D: peristaltic pump
+MULTIPLEXER M1: rotation of greenhouse base
 */
 
 /*
-SENSOR 1: colour sensor
-SENSOR 2: multiplexer
+SENSOR 1: multiplexer
+SENSOR 2: colour sensor
 */
 void configureSensors()
 {
-	SensorType[S1] = sensorEV3_Color;
+	SensorType[S1] = sensorI2CCustom;
 	wait1Msec(50);
-	SensorMode[S1] = modeEV3Color_Color;
+	SensorType[S2] = sensorEV3_Color;
 	wait1Msec(50);
-	// initialize, for the multiplexer connected to S2
-	SensorType[S2] = sensorI2CCustom;
-	MSMMUXinit();
+	SensorMode[S2] = modeEV3Color_Color;
 	wait1Msec(50);
 }
 
 bool checkFillLevel()
 {
-	if (SensorMode[S1] == (int)colorWhite)
+	if (SensorValue[S2] == (int)colorWhite)
 		return false;
 	else
 		return true;
@@ -79,14 +78,15 @@ void displayFillLevel()
 	if (checkFillLevel())
 		displayTextLine(5, "Water available in tank.");
 	else
-		displayTextLine(5, "Empty water tank. Please add water.");
+		displayTextLine(5, "Empty water tank.");
+		displayTextLine(6, "Please add water.");
 }
 
 //Returns time when pump started
 float startPump()
 {
 	float startTime = time1[T1];
-	MSMMotor(mmotor_S1_1, PUMP_SPEED);
+	motor[motorD] = PUMP_SPEED;
 	return startTime;
 }
 
@@ -99,28 +99,19 @@ bool resetWaterCycle()
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
+	nMotorEncoder[motorB] = 0; //bugged in one line
+	nMotorEncoder[motorA] = 0;
 	
-	motor[motorC] = motor[motorA] = -X_AXIS_SPEED; //x-axis
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
+	motor[motorB] = -X_AXIS_SPEED; //x-axis
+	motor[motorA] = -X_AXIS_SPEED;
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < (X_AXIS_LENGTH+BUFFER_LENGTH)) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
-	motor[motorC] = motor[motorA] = 0;
+	motor[motorB] = 0;
+	motor[motorA] = 0;
 	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
 		executed = false;
-
-	if (executed)
-	{
-		startTime = time1[T1];
-		motor[motorD] = -Y_AXIS_SPEED; //y-axis
-		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
-		{}
-		motor[motorD] = 0;
-		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
-			executed = false;
-	}
 	return executed;
 }
-
 /*
 Reads in user array and saves settings
 settings[0]: water cycle interval, settings[1]: rotation cycle interval
@@ -155,22 +146,31 @@ Returns false if fails
 bool rotateGreenhouse(int& numRotations, bool& clockwise)
 {
 	bool executed = true;
+	//bool buffer = false; //need buffer for direction change
 	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
 		clockwise = !clockwise; //change direction
 		numRotations = 0;
+		//buffer = true;
 	}
-
-	nMotorEncoder[motorB] = 0;
-	if (clockwise)
-		motor[motorB] = ROTATION_SPEED;
 	else
-		motor[motorB] = -ROTATION_SPEED;
-
-	while((abs(nMotorEncoder[motorB])*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+		numRotations++;
+	
+	
+	if (clockwise)
+		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
+	else
+		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
+	/*if (buffer)
+		wait1Msec(1000);*/
+	//wait1Msec(10000); //test
+	//while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
 	{}
-	motor[motorB] = 0;
+	MSMMotorEncoderReset(mmotor_S1_1);
+	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+	{}
+	MSMotorStop(mmotor_S1_1);
 	
 	if (time1[T1] - startTime > MAX_ROTATION_TIME)
 		executed = false;
@@ -194,22 +194,27 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
-	motor[motorC] = motor[motorA] = X_AXIS_SPEED;
-	motor[motorD] = Y_AXIS_SPEED;
+	nMotorEncoder[motorA] = 0; //bugged when in one line
+	nMotorEncoder[motorB] = 0;
+	nMotorEncoder[motorC] = 0;
+	motor[motorB] = X_AXIS_SPEED;
+	motor[motorA] = X_AXIS_SPEED;
+	motor[motorC] = Y_AXIS_SPEED;
 	float xStartTime = time1[T1]; //fail safe
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
 	{
 		float yStartTime = time1[T1];
-		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
+		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
 		{}
-		motor[motorD] *= -1;
-		nmotorEncoder[motorD] = 0;
+		motor[motorC] *= -1;
+		nmotorEncoder[motorC] = 0;
 		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
-	motor[motorC] = motor[motorA] = motor[motorD] = 0; //stop axis
-	MSMotorStop(mmotor_S1_1); //stop pump
+	motor[motorC] = 0; //stop axis
+	motor[motorA] = 0;
+	motor[motorB] = 0;
+	motor[motorD] = 0; //stop pump
 	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - xStartTime > MAX_X_AXIS_TIME))
 		executed = false;
 	return executed;
@@ -495,8 +500,8 @@ void activateGreenhouse(float* settings, string plantName, int* date)
 
 void safeShutDown()
 {
-	MSMotorStop(mmotor_S1_1); //stop pump
-	motor[motorB] = 0; //stop rotation
+	motor[motorD] = 0; //stop pump
+	MSMotorStop(mmotor_S1_1); //stop rotation
 	resetWaterCycle();
 	//generateFailFile();
 }
@@ -505,6 +510,10 @@ task main()
 {
 	clearTimer(T1);
 	configureSensors();
+	
+	// initialize, for the multiplexer connected to S2; must be done in main()
+	MSMMUXinit();
+	wait1Msec(50);
 	
 	TFileHandle config;
 	bool configOpen = openReadPC(config, "config.txt");
@@ -516,6 +525,21 @@ task main()
 		string plantName = " ";
 		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0}; //water cycle interval, rotation cycle interval, day, month, year, start hour, start minute, am/pm (0/1), current hour, current minute
 		readUserSettings(config, plantName, settings);
+
+		/*
+		TESTING
+		*/
+		int num = 0;
+		bool clock = true;
+		rotateGreenhouse(num, clock);	
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+
 
 		closeFilePC(fout);
 		closeFilePC(config);
