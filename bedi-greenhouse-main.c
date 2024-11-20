@@ -9,10 +9,10 @@ Last Updated: 11/18/2024
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
-const float MAX_PUMP_TIME = 1000000000.0; //set empirically*******************
-const float MAX_X_AXIS_TIME = 1000000000; //15000
-const float MAX_Y_AXIS_TIME = 1000000000; //9100
-const float MAX_ROTATION_TIME = 1000000000.0; //set empirically**********************
+const float MAX_PUMP_TIME = 19500; //axis time + 1 sec
+const float MAX_X_AXIS_TIME = 18500; //16410 runtime
+const float MAX_Y_AXIS_TIME = 10500; //8700 runtime
+const float MAX_ROTATION_TIME = 20000;
 
 //Rotation constants (found empirically)
 const float ROTATION_DISTANCE = 31.5;
@@ -29,9 +29,9 @@ const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
 const int PUMP_SPEED = 100;
-const float Y_AXIS_LENGTH = 8.5; //actual = 14.0 cm 12.0
-const float X_AXIS_LENGTH = 5; //actual = 18.0 cm 16.0
-const float BUFFER_LENGTH = 3.5; //due to change direction
+const float Y_AXIS_LENGTH = 8.5; //full rail 14.0 cm
+const float X_AXIS_LENGTH = 5; //full rail 18.0 cm; cut off due to axis design
+const float BUFFER_LENGTH = 3.5; //due to change in direction
 const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
@@ -44,8 +44,8 @@ const int AXIS_FAILED = 2;
 const int WAIT_MESSAGE = 2500; 
 
 /*
-MOTOR A: x direction on 2D axis
-MOTOR B: x direction on 2D axis
+MOTOR A: x direction on 2D axis (1)
+MOTOR B: x direction on 2D axis (2)
 MOTOR C: y direction on 2D axis
 MOTOR D: peristaltic pump
 MULTIPLEXER M1: rotation of greenhouse base
@@ -99,10 +99,10 @@ bool resetWaterCycle()
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorB] = 0; //bugged in one line
+	nMotorEncoder[motorB] = 0; //error when combined in one line
 	nMotorEncoder[motorA] = 0;
 	
-	motor[motorB] = -X_AXIS_SPEED; //x-axis
+	motor[motorB] = -X_AXIS_SPEED; //x-axis motors
 	motor[motorA] = -X_AXIS_SPEED;
 	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < (X_AXIS_LENGTH+BUFFER_LENGTH)) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
@@ -112,6 +112,7 @@ bool resetWaterCycle()
 		executed = false;
 	return executed;
 }
+
 /*
 Reads in user array and saves settings
 settings[0]: water cycle interval, settings[1]: rotation cycle interval
@@ -162,11 +163,14 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
 	else
 		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
+
+	//mechanical tests
 	/*if (buffer)
-		wait1Msec(1000);*/
-	//wait1Msec(10000); //test
-	//while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
+		wait1Msec(1000);
+	wait1Msec(10000); //test
+	while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
 	{}
+	*/
 	MSMMotorEncoderReset(mmotor_S1_1);
 	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
@@ -194,21 +198,23 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorA] = 0; //bugged when in one line
+	nMotorEncoder[motorA] = 0; //error when combined in one line
 	nMotorEncoder[motorB] = 0;
 	nMotorEncoder[motorC] = 0;
 	motor[motorB] = X_AXIS_SPEED;
 	motor[motorA] = X_AXIS_SPEED;
 	motor[motorC] = Y_AXIS_SPEED;
+	
 	float xStartTime = time1[T1]; //fail safe
 	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
 	{
+		// y-axis iterates multiple times while x-axis makes its first iteration
 		float yStartTime = time1[T1];
 		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
 		{}
 		motor[motorC] *= -1;
-		nmotorEncoder[motorC] = 0;
-		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
+		nMotorEncoder[motorC] = 0;
+		if (time1[T1] - yStartTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
 	motor[motorC] = 0; //stop axis
@@ -387,77 +393,67 @@ void generateStats(string plantName, float* settings)
 
 }
 
-//kira
-void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* date)
+/*
+Generates end file based on stats from generateStats(string, float*)
+*/
+void generateEndFile(TFileHandle& fout, string plantName, float* settings)
 {
-	/*
- 	writeEndlPC(fout);
-  	string s, float f, int i, etc.
-  	writeTextPC(fout, s);
-   	writeFloatPC(fout, f);
-    	writeFloatPC(fout, "%.2f", f); //this is how they do it on the doc but i feel like it's writeTextPC not writeFloatPC
-     	writeIntPC(fout, i);
-	*/
-	generateStats(plantName, settings, date);
-  	string PLANT_NAME = "PLANT NAME:";
-  	string WATER_CYCLE = "WATER CYCLE INTERVAL (milliseconds):";
-  	string ROTATION_CYCLE = "ROTATION CYCLE INTERVAL (milliseconds):";
-  	string DAY = "DAY (##)";
-  	string MONTH = "MONTH (##)";
-  	string YEAR = "YEAR (####)";
-	string TIME = "END TIME:"
+	//float* settingsTemp = settings;
+	generateStats(plantName, settings);
   	
-	writeTextPC(fout, PLANT_NAME);
+	writeTextPC(fout, "PLANT NAME:");
 	writeEndlPC(fout);
 	writeTextPC(fout, plantName);
  	writeEndlPC(fout);
 	writeEndlPC(fout);
 
-   	writeTextPC(fout, WATER_CYCLE);
+   	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
 	writeEndlPC(fout);
-    	writeFloatPC(fout, settings[0]);
+    	writeFloatPC(fout, *settings); //MIGHT BUG DUE TO GENERATE STATS
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-    	writeTextPC(fout, ROTATION_CYCLE);
+    	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
 	writeEndlPC(fout);
-    	writeFloatPC(fout, settings[1]);
+    	writeFloatPC(fout, *(settings++));
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-   	writeTextPC(fout, DAY);
+   	writeTextPC(fout, "DAY (##)");
 	writeEndlPC(fout);
-	if (settings[2] < 10.0)
+	if (*(settings++) < 10.0) //should be settings[2]
 	{
 		writeTextPC(fout, "0");
-	   	writeFloatPC(fout, "%.0f", settings[2]);
+	   	writeFloatPC(fout, "%.0f", *settings); //MIGHT BUG, also could be writeTextPC
 	}
 	else 
 	{
-		writeFloatPC(fout, "%.0f", settings[2]);
+		writeFloatPC(fout, "%.0f", *settings);
 	}
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-   	writeTextPC(fout, MONTH);
+   	writeTextPC(fout, "MONTH (##)");
 	writeEndlPC(fout);
-    	writeFloatPC(fout, "%.0f", settings[3]);
+    	writeFloatPC(fout, "%.0f", *(settings++));
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
-    	writeTextPC(fout, YEAR);
+    	writeTextPC(fout, "YEAR (####)");
 	writeEndlPC(fout);
-    	writeFloatPC(fout, "%.0f", settings[4]);
+    	writeFloatPC(fout, "%.0f", *(settings++));
 	writeEndlPC(fout);  
 	writeEndlPC(fout);
-
-	writeTextPC(fout, TIME);
+	
+	settings += 3;
+	writeTextPC(fout, "END TIME:");
 	writeEndlPC(fout);
-	writeFloatPC(fout,  "%.0f", settings[9]);
+	writeFloatPC(fout,  "%.0f", *settings); //MIGHT BUG
 	writeTextPC(fout, ":");
-	writeFloatPC(fout, "%.0f", settings[8]);
+	writeFloatPC(fout, "%.0f", *(settings++));
 
-	if (settings[7] == 0)
+	settings -= 2;
+	if (*settings == 0)
 	{
 		writeTextPC(fout, "AM");
 	}
@@ -468,30 +464,31 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* 
 
 }
 
-//kira
+/*
+Generates fail file based on generateEndFile(TFileHandle&, string, float*)
+Adds message about why the robot failed
+*/
 void generateFailFile(TFileHandle& fout, string plantName, float* settings, int taskFailed)
 {
-	string ROTATION_FAIL = "ROTATION FAILED";
-	string PUMP_FAIL = "PUMP FAILED";
-	string AXIS_FAIL = "AXIS FAILED";
-
 	generateEndFile(fout, plantName, settings);
 	writeEndlPC(fout);
 
-	if (taskFailed == 0)
+	if (taskFailed == ROTATION_FAILED)
 	{
-		writeTextPC(fout, ROTATION_FAIL);
+		writeTextPC(fout, "ROTATION FAILED");
 	}
-	else if (taskFailed == 1)
+	else if (taskFailed == PUMP_FAILED)
 	{
-		writeTextPC(fout, PUMP_FAIL);
+		writeTextPC(fout, "WATER PUMP FAILED");
 	}
-	else 
+	else if (taskFailed == AXIS_FAILED)
 	{
-		writeTextPC(fout, AXIS_FAIL);
+		writeTextPC(fout, "2D AXIS FAILED");
 	}
-	/* ROTATION_FAILED = 0 PUMP_FAILED = 1 AXIS_FAILED = 2*/
-	
+	else
+	{
+		writeTextPC(fout, "UNKNOWN FAILURE");
+	}
 }
 
 //emma
@@ -526,23 +523,9 @@ task main()
 		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0}; //water cycle interval, rotation cycle interval, day, month, year, start hour, start minute, am/pm (0/1), current hour, current minute
 		readUserSettings(config, plantName, settings);
 
-		/*
-		TESTING
-		*/
-		int num = 0;
-		bool clock = true;
-		rotateGreenhouse(num, clock);	
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-
-
 		closeFilePC(fout);
 		closeFilePC(config);
+		generateEndFile(fout, plantName, settings);
 	}
 	else
 	{
