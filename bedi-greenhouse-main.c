@@ -9,13 +9,13 @@ Last Updated: 11/18/2024
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
-const float MAX_PUMP_TIME = 0.0; //set empirically*******************
+const float MAX_PUMP_TIME = 1000000000.0; //set empirically*******************
 const float MAX_X_AXIS_TIME = 7500;
 const float MAX_Y_AXIS_TIME = 9100;
-const float MAX_ROTATION_TIME = 0.0; //set empirically**********************
+const float MAX_ROTATION_TIME = 1000000000.0; //set empirically**********************
 
 //Rotation constants (found empirically)
-const float ROTATION_DISTANCE = 40.0;
+const float ROTATION_DISTANCE = 37.5.0;
 const int ROTATION_SPEED = 20;
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
@@ -157,15 +157,18 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 		clockwise = !clockwise; //change direction
 		numRotations = 0;
 	}
+	else
+		numRotations++;
+	
 	MSMMotorEncoderReset(mmotor_S1_1);
 	if (clockwise)
-		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
-	else
 		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
+	else
+		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
 	//wait1Msec(10000); //test
-	while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe
+	//while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
 	{}
-	//while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
 	MSMotorStop(mmotor_S1_1);
 	
@@ -438,6 +441,13 @@ task main()
 		int num = 0;
 		bool clock = true;
 		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
 
 		closeFilePC(fout);
 		closeFilePC(config);
