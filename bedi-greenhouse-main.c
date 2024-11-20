@@ -479,11 +479,11 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings)
 	settings -= 2;
 	if (*settings == 0)
 	{
-		writeTextPC(fout, "AM");
+		writeTextPC(fout, "a.m.");
 	}
 	else 
 	{
-		writeTextPC(fout, "PM");
+		writeTextPC(fout, "p.m.");
 	}		
 
 }
@@ -511,27 +511,11 @@ void generateFailFile(TFileHandle& fout, string plantName, float* settings, int 
 		default:
 			writeTextPC(fout, "UNKNOWN FAILURE");
 	}
-
-	/*
-	if (taskFailed == ROTATION_FAILED)
-	{
-		writeTextPC(fout, "ROTATION FAILED");
-	}
-	else if (taskFailed == PUMP_FAILED)
-	{
-		writeTextPC(fout, "WATER PUMP FAILED");
-	}
-	else if (taskFailed == AXIS_FAILED)
-	{
-		writeTextPC(fout, "2D AXIS FAILED");
-	}
-	else
-	{
-		writeTextPC(fout, "UNKNOWN FAILURE");
-	}*/
 }
 
-//emma
+/*
+All daily operations (performs water/rotation cycles at the proper intervals, and listening for buttons)
+*/
 void activateGreenhouse(float* settings, string plantName, bool& executed, int& taskFailed)
 {
 	// initialize, for the multiplexer connected to S2; must be done here (not global)
@@ -550,10 +534,12 @@ void activateGreenhouse(float* settings, string plantName, bool& executed, int& 
 	int numRotations = 0; //no turns yet
 	bool clockwise = true; //first turn clockwise
 	bool userShutDown = false; //to exit activateGreenhouse without failing
-
+	
 	while(executed && !userShutDown)
 	{
-		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && !getButtonPress(buttonRight) && (time1[T2] < *water) && (time1[T3] < *rotation))
+		displayTextLine(4, "Press UP for stats");
+		displayTextLine(5, "Press DOWN to shut down");
+		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && (time1[T2] < *water) && (time1[T3] < *rotation))
 		{}
 	
 		//GEN STATS
@@ -572,15 +558,6 @@ void activateGreenhouse(float* settings, string plantName, bool& executed, int& 
 			{}
 			wait1Msec(50); //buffer
 			userShutDown = true;
-		}
-	
-		//SET TIME
-		else if (getButtonPress(buttonRight))
-		{
-			while(getButtonPress(buttonAny))
-			{}
-			wait1Msec(50);
-			setStartTime(tempSettings);
 		}
 	
 		//WATER CYCLE
@@ -640,6 +617,7 @@ task main()
 		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0};
 		
 		readUserSettings(config, plantName, settings);
+		setStartTime(settings);
 		generateStats(plantName, settings); //again idk if pointers will allow this
 
 		if (activateWaterCycle(taskFailed)) //first water-cycle
