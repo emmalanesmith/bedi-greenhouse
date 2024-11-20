@@ -549,8 +549,9 @@ void activateGreenhouse(float* settings, string plantName, bool& executed, int& 
 
 	int numRotations = 0; //no turns yet
 	bool clockwise = true; //first turn clockwise
+	bool userShutDown = false; //to exit activateGreenhouse without failing
 
-	while(executed)
+	while(executed && !userShutDown)
 	{
 		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && !getButtonPress(buttonRight) && (time1[T2] < *water) && (time1[T3] < *rotation))
 		{}
@@ -570,7 +571,7 @@ void activateGreenhouse(float* settings, string plantName, bool& executed, int& 
 			while(getButtonPress(buttonAny))
 			{}
 			wait1Msec(50); //buffer
-			return; //we were given permission to use this return "break" statement
+			userShutDown = true;
 		}
 	
 		//SET TIME
