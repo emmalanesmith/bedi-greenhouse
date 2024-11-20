@@ -10,12 +10,12 @@ Last Updated: 11/18/2024
 
 //Fail-safe max times (found empirically)
 const float MAX_PUMP_TIME = 1000000000.0; //set empirically*******************
-const float MAX_X_AXIS_TIME = 7500;
-const float MAX_Y_AXIS_TIME = 9100;
+const float MAX_X_AXIS_TIME = 1000000000; //15000
+const float MAX_Y_AXIS_TIME = 1000000000; //9100
 const float MAX_ROTATION_TIME = 1000000000.0; //set empirically**********************
 
 //Rotation constants (found empirically)
-const float ROTATION_DISTANCE = 37.5.0;
+const float ROTATION_DISTANCE = 31.5;
 const int ROTATION_SPEED = 20;
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
@@ -29,9 +29,9 @@ const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
 const int PUMP_SPEED = 100;
-const float Y_AXIS_LENGTH = 12.0; //actual = 14.0 cm 
-const float X_AXIS_LENGTH = 16.0; //actual = 18.0 cm 
-const float X_AXIS_SPEED = 10.0;
+const float Y_AXIS_LENGTH = 10; //actual = 14.0 cm 12.0
+const float X_AXIS_LENGTH = 14; //actual = 18.0 cm 16.0
+const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
 //Fail integers (for fail-safe error message)
@@ -56,6 +56,8 @@ SENSOR 2: colour sensor
 */
 void configureSensors()
 {
+	SensorType[S1] = sensorI2CCustom;
+	wait1Msec(50);
 	SensorType[S2] = sensorEV3_Color;
 	wait1Msec(50);
 	SensorMode[S2] = modeEV3Color_Color;
@@ -151,23 +153,28 @@ Returns false if fails
 bool rotateGreenhouse(int& numRotations, bool& clockwise)
 {
 	bool executed = true;
+	//bool buffer = false; //need buffer for direction change
 	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
 		clockwise = !clockwise; //change direction
 		numRotations = 0;
+		//buffer = true;
 	}
 	else
 		numRotations++;
 	
-	MSMMotorEncoderReset(mmotor_S1_1);
+	
 	if (clockwise)
 		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
 	else
 		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
+	/*if (buffer)
+		wait1Msec(1000);*/
 	//wait1Msec(10000); //test
 	//while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
 	{}
+	MSMMotorEncoderReset(mmotor_S1_1);
 	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
 	MSMotorStop(mmotor_S1_1);
@@ -194,8 +201,11 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorC] = nMotorEncoder[motorB] = nMotorEncoder[motorA] = 0;
-	motor[motorB] = motor[motorA] = X_AXIS_SPEED;
+	nMotorEncoder[motorA] = 0; //bugged when in one line
+	nMotorEncoder[motorB] = 0;
+	nMotorEncoder[motorC] = 0;
+	motor[motorB] = X_AXIS_SPEED;
+	motor[motorA] = X_AXIS_SPEED;
 	motor[motorC] = Y_AXIS_SPEED;
 	float xStartTime = time1[T1]; //fail safe
 	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
@@ -208,7 +218,9 @@ bool activateWaterCycle()
 		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
-	motor[motorC] = motor[motorA] = motor[motorB] = 0; //stop axis
+	motor[motorC] = 0; //stop axis
+	motor[motorA] = 0;
+	motor[motorB] = 0;
 	motor[motorD] = 0; //stop pump
 	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - xStartTime > MAX_X_AXIS_TIME))
 		executed = false;
@@ -420,6 +432,10 @@ task main()
 	clearTimer(T1);
 	configureSensors();
 	
+	// initialize, for the multiplexer connected to S2; must be done in main()
+	MSMMUXinit();
+	wait1Msec(50);
+	
 	TFileHandle config;
 	bool configOpen = openReadPC(config, "config.txt");
 	TFileHandle fout;
@@ -434,20 +450,8 @@ task main()
 		/*
 		TESTING
 		*/
-		// initialize, for the multiplexer connected to S2
-		SensorType[S1] = sensorI2CCustom;
-		MSMMUXinit();
-		wait1Msec(50);
-		int num = 0;
-		bool clock = true;
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
+		if (activateWaterCycle())
+			resetWaterCycle();
 
 		closeFilePC(fout);
 		closeFilePC(config);
