@@ -128,20 +128,30 @@ settings[2]: day, settings[3]: month, settings[4]: year
 void readUserSettings(TFileHandle& config, string& plantName, float* settings)
 {
 	string header = " "; //ignore headers on config file
+	int counter = 0; //num of settings increments to reset after method
 	readTextPC(config, header);
 	readTextPC(config, plantName);
 	
 	readTextPC(config, header);
 	readFloatPC(config, *settings);
-	readTextPC(config, header);
-	readFloatPC(config, *(settings++));
 	
 	readTextPC(config, header);
 	readFloatPC(config, *(settings++));
+	counter++;
+	
 	readTextPC(config, header);
 	readFloatPC(config, *(settings++));
+	counter++;
+		
 	readTextPC(config, header);
 	readFloatPC(config, *(settings++));
+	counter++;
+		
+	readTextPC(config, header);
+	readFloatPC(config, *(settings++));
+	counter++;
+	
+	settings -= counter; //reset
 }
 
 /*
@@ -257,6 +267,7 @@ Prompts the user to enter the current time and saves to float array
 void setStartTime(float* settings)
 {
 	float* hourP = (6 + settings);
+	
 	float hour = *hourP;
 	float minute = *(++hourP);
 	float period = *(++hourP);
@@ -321,6 +332,7 @@ void setStartTime(float* settings)
 
 		wait1Msec(500);
 	}
+	
 }
 
 /*
@@ -328,16 +340,26 @@ Displays plant's stats (name, number of cycles, current date and time, etc.)
 */
 void generateStats(string plantName, float* settings)
 {
+	int counter = 0; //num of settings increments to reset after method
 	float timeWater = *settings;
 	float timeRotation = *(++settings);
+	counter++;
 	float day = *(++settings);
+	counter++;
 	float month = *(++settings);
+	counter++;
 	float year = *(++settings);
+	counter++;
 	float hour = *(++settings);
+	counter++;
 	float minute = *(++settings);
+	counter++;
 	float period = *(++settings);
+	counter++;
 	float newHour = *(++settings);
+	counter++;
 	float newMinute = *(++settings);
+	counter++;
 	float runTime = time1[T1];
 
 	int daysInMonth[12] = {31, 28,31, 30, 31, 30, 31 ,31 ,30, 31, 30, 31}; // index corresponds to month-1
@@ -415,6 +437,7 @@ void generateStats(string plantName, float* settings)
 	else displayTextLine(4, "%.0f:%.0f %s", newHour, periodDisplay);
 	wait1Msec(WAIT_MESSAGE);
 
+	settings -= counter; //reset counter
 }
 
 /*
@@ -422,7 +445,7 @@ Generates end file based on stats from generateStats(string, float*)
 */
 void generateEndFile(TFileHandle& fout, string plantName, float* settings)
 {
-	//float* settingsTemp = settings;
+	int counter = 0; //num of settings increments to reset after method
 	generateStats(plantName, settings);
   	
 	writeTextPC(fout, "PLANT NAME:");
@@ -433,50 +456,58 @@ void generateEndFile(TFileHandle& fout, string plantName, float* settings)
 
    	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
 	writeEndlPC(fout);
-    	writeFloatPC(fout, *settings); //MIGHT BUG DUE TO GENERATE STATS
+    	writeFloatPC(fout, *settings);
+	counter++;
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
     	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
 	writeEndlPC(fout);
     	writeFloatPC(fout, *(settings++));
+	counter++;
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
    	writeTextPC(fout, "DAY (##)");
 	writeEndlPC(fout);
-	if (*(settings++) < 10.0) //should be settings[2]
+	if (*(settings++) < 10.0)
 	{
 		writeTextPC(fout, "0");
-	   	writeFloatPC(fout, "%.0f", *settings); //MIGHT BUG, also could be writeTextPC
+	   	writeFloatPC(fout, "%.0f", *settings);
 	}
 	else 
 	{
 		writeFloatPC(fout, "%.0f", *settings);
 	}
+	counter++;
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
    	writeTextPC(fout, "MONTH (##)");
 	writeEndlPC(fout);
     	writeFloatPC(fout, "%.0f", *(settings++));
+	counter++;
   	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
     	writeTextPC(fout, "YEAR (####)");
 	writeEndlPC(fout);
     	writeFloatPC(fout, "%.0f", *(settings++));
+	counter++;
 	writeEndlPC(fout);  
 	writeEndlPC(fout);
 	
 	settings += 3;
+	counter += 3;
 	writeTextPC(fout, "END TIME:");
 	writeEndlPC(fout);
-	writeFloatPC(fout,  "%.0f", *settings); //MIGHT BUG
+	writeFloatPC(fout,  "%.0f", *settings);
 	writeTextPC(fout, ":");
 	writeFloatPC(fout, "%.0f", *(settings++));
+	counter++;
 
 	settings -= 2;
+	counter -= 2;
 	if (*settings == 0)
 	{
 		writeTextPC(fout, "a.m.");
@@ -527,7 +558,7 @@ void activateGreenhouse(float* settings, string plantName, bool& executed, int& 
   	buttonDown: shut down
 	*/
 
-	float* tempSettings = settings; //could break.
+	float* tempSettings = settings;
 	float* water = settings;
 	float* rotation = settings++;
 
@@ -618,7 +649,7 @@ task main()
 		
 		readUserSettings(config, plantName, settings);
 		setStartTime(settings);
-		generateStats(plantName, settings); //again idk if pointers will allow this
+		generateStats(plantName, settings);
 
 		if (activateWaterCycle(taskFailed)) //first water-cycle
 			executed = resetWaterCycle(taskFailed);
