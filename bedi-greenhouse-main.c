@@ -29,8 +29,9 @@ const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
 const int PUMP_SPEED = 100;
-const float Y_AXIS_LENGTH = 10; //actual = 14.0 cm 12.0
-const float X_AXIS_LENGTH = 14; //actual = 18.0 cm 16.0
+const float Y_AXIS_LENGTH = 8.5; //actual = 14.0 cm 12.0
+const float X_AXIS_LENGTH = 5; //actual = 18.0 cm 16.0
+const float BUFFER_LENGTH = 3.5; //due to change direction
 const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
@@ -98,25 +99,17 @@ bool resetWaterCycle()
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorC] = nMotorEncoder[motorB] = nMotorEncoder[motorA] = 0;
+	nMotorEncoder[motorB] = 0; //bugged in one line
+	nMotorEncoder[motorA] = 0;
 	
-	motor[motorB] = motor[motorA] = -X_AXIS_SPEED; //x-axis
-	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
+	motor[motorB] = -X_AXIS_SPEED; //x-axis
+	motor[motorA] = -X_AXIS_SPEED;
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < (X_AXIS_LENGTH+BUFFER_LENGTH)) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
-	motor[motorB] = motor[motorA] = 0;
+	motor[motorB] = 0;
+	motor[motorA] = 0;
 	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
 		executed = false;
-
-	if (executed)
-	{
-		startTime = time1[T1];
-		motor[motorC] = -Y_AXIS_SPEED; //y-axis
-		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
-		{}
-		motor[motorC] = 0;
-		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
-			executed = false;
-	}
 	return executed;
 }
 /*
@@ -450,8 +443,17 @@ task main()
 		/*
 		TESTING
 		*/
-		if (activateWaterCycle())
-			resetWaterCycle();
+		int num = 0;
+		bool clock = true;
+		rotateGreenhouse(num, clock);	
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+		rotateGreenhouse(num, clock);
+		wait1Msec(WAIT_MESSAGE);
+
 
 		closeFilePC(fout);
 		closeFilePC(config);
