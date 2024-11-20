@@ -9,10 +9,10 @@ Last Updated: 11/18/2024
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
-const float MAX_PUMP_TIME = 1000000000.0; //set empirically*******************
-const float MAX_X_AXIS_TIME = 1000000000; //15000
-const float MAX_Y_AXIS_TIME = 1000000000; //9100
-const float MAX_ROTATION_TIME = 1000000000.0; //set empirically**********************
+const float MAX_PUMP_TIME = 19500; //axis time + 1*******************
+const float MAX_X_AXIS_TIME = 18500; //16410
+const float MAX_Y_AXIS_TIME = 11000; //8700
+const float MAX_ROTATION_TIME = 20000; //set empirically**********************
 
 //Rotation constants (found empirically)
 const float ROTATION_DISTANCE = 31.5;
