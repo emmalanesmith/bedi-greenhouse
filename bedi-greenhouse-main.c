@@ -9,10 +9,10 @@ Last Updated: 11/18/2024
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
-const float MAX_PUMP_TIME = 19500; //axis time + 1*******************
+const float MAX_PUMP_TIME = 19500; //axis time + 1
 const float MAX_X_AXIS_TIME = 18500; //16410
 const float MAX_Y_AXIS_TIME = 11000; //8700
-const float MAX_ROTATION_TIME = 20000; //set empirically**********************
+const float MAX_ROTATION_TIME = 20000;
 
 //Rotation constants (found empirically)
 const float ROTATION_DISTANCE = 31.5;
@@ -29,9 +29,9 @@ const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
 const int PUMP_SPEED = 100;
-const float Y_AXIS_LENGTH = 8.5; //actual = 14.0 cm 12.0
-const float X_AXIS_LENGTH = 5; //actual = 18.0 cm 16.0
-const float BUFFER_LENGTH = 3.5; //due to change direction
+const float Y_AXIS_LENGTH = 8.5; //actual = 14.0 cm (reduced due to mechanical design)
+const float X_AXIS_LENGTH = 5; //actual = 18.0 cm (^)
+const float BUFFER_LENGTH = 3.5; //due to change in direction
 const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
@@ -99,7 +99,7 @@ bool resetWaterCycle()
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorB] = 0; //bugged in one line
+	nMotorEncoder[motorB] = 0; //error when combined in one line
 	nMotorEncoder[motorA] = 0;
 	
 	motor[motorB] = -X_AXIS_SPEED; //x-axis
@@ -162,11 +162,14 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise)
 		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
 	else
 		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
+
+	//mechanical tests
 	/*if (buffer)
-		wait1Msec(1000);*/
-	//wait1Msec(10000); //test
-	//while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
+		wait1Msec(1000);
+	wait1Msec(10000); //test
+	while(abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) //fail-safe TEST
 	{}
+	*/
 	MSMMotorEncoderReset(mmotor_S1_1);
 	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
@@ -194,7 +197,7 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorA] = 0; //bugged when in one line
+	nMotorEncoder[motorA] = 0; //error when combined in one line
 	nMotorEncoder[motorB] = 0;
 	nMotorEncoder[motorC] = 0;
 	motor[motorB] = X_AXIS_SPEED;
@@ -208,7 +211,7 @@ bool activateWaterCycle()
 		{}
 		motor[motorC] *= -1;
 		nmotorEncoder[motorC] = 0;
-		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
+		if (time1[T1] - yStartTime > MAX_Y_AXIS_TIME)
 			executed = false;
 	}
 	motor[motorC] = 0; //stop axis
@@ -525,21 +528,6 @@ task main()
 		string plantName = " ";
 		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0}; //water cycle interval, rotation cycle interval, day, month, year, start hour, start minute, am/pm (0/1), current hour, current minute
 		readUserSettings(config, plantName, settings);
-
-		/*
-		TESTING
-		*/
-		int num = 0;
-		bool clock = true;
-		rotateGreenhouse(num, clock);	
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-		rotateGreenhouse(num, clock);
-		wait1Msec(WAIT_MESSAGE);
-
 
 		closeFilePC(fout);
 		closeFilePC(config);
