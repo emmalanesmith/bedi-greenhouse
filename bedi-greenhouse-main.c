@@ -54,12 +54,14 @@ MULTIPLEXER M1: rotation of greenhouse base
 
 /*
 SENSOR 1: multiplexer
+SENSOR 3: touch
 SENSOR 4: colour sensor
-MULTIPLEXER S1: touch sensor
 */
 void configureSensors()
 {
 	SensorType[S1] = sensorI2CCustom;
+	wait1Msec(50);
+	SensorType[S3] = sensorEV3_Touch;
 	wait1Msec(50);
 	SensorType[S4] = sensorEV3_Color;
 	wait1Msec(50);
@@ -223,8 +225,12 @@ bool activateWaterCycle(int& taskFailed)
 	motor[motorC] = Y_AXIS_SPEED;
 	
 	float xStartTime = time1[T1]; //fail safe
-	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME) && (SensorValue[S3] == 0))
 	{
+		if (SensorValue[S3] == 1)
+		{
+			executed = false;
+		}
 		// y-axis iterates multiple times while x-axis makes its first iteration
 		float yStartTime = time1[T1];
 		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
@@ -478,6 +484,9 @@ void generateFailFile(TFileHandle& fout, string plantName, int taskFailed, float
 
 	switch(taskFailed)
 	{
+		case -1:
+			writeTextPC(fout, "UNKNOWN FAILURE");
+			break;
 		case 0:
 			writeTextPC(fout, "ROTATION FAILED");
 			break;
@@ -517,11 +526,14 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 	{
 		displayTextLine(4, "Press UP for stats");
 		displayTextLine(5, "Press DOWN to shut down");
-		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && (time1[T2] < waterInterval) && (time1[T3] < rotationInterval))
+		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && (time1[T2] < waterInterval) && (time1[T3] < rotationInterval) && (SensorValue[S3] == 0))
 		{}
 	
+		if (SensorValue[S3] == 1) //FAIL shut down button or axis tipped
+			executed = false;
+
 		//GEN STATS
-		if (getButtonPress(buttonUp))
+		else if (getButtonPress(buttonUp))
 		{
 			while(getButtonPress(buttonAny))
 			{}
@@ -563,7 +575,7 @@ void safeShutDown(int taskFailed)
 {
 	motor[motorD] = 0; //stop pump
 	MSMotorStop(mmotor_S1_1); //stop rotation
-	resetWaterCycle(taskFailed);
+	//resetWaterCycle(taskFailed);
 	//generate files
 }
 
@@ -592,7 +604,7 @@ task main()
 		executed = resetWaterCycle(taskFailed);
 	else
 		executed = false;
-		
+	
 	if (executed)
 		activateGreenhouse(plantName, executed, taskFailed, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9]);
 	
