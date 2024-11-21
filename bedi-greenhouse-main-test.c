@@ -617,64 +617,68 @@ void safeShutDown(int taskFailed)
 	resetWaterCycle(taskFailed);
 }
 
+
+/*
+Test water fill level check
+Text display fill level
+Empty & full
+*/
+void test_waterTank()
+{
+	while (!checkFillLevel()) //no water
+	{
+		displayFillLevel();
+	}
+}
+
+/*
+Test pump moves water at all
+*/
+void test_pump()
+{
+	startPump();
+	wait1Msec(10000);
+	motor[motorD] = 0;
+}
+
+/*
+Test 90 deg turn
+Test 180 change direction
+*/
+void test_rotation()
+{
+	// initialize, for the multiplexer connected to S2; must be done here (not global)
+	MSMMUXinit();
+	wait1Msec(50);
+	int taskFailed = NO_FAILURE;
+	
+	int num = 0;
+	bool clock = true;
+	rotateGreenhouse(num, clock, taskFailed);	
+	wait1Msec(WAIT_MESSAGE);
+	rotateGreenhouse(num, clock, taskFailed);
+	wait1Msec(WAIT_MESSAGE);
+	rotateGreenhouse(num, clock, taskFailed);
+	wait1Msec(WAIT_MESSAGE);
+	rotateGreenhouse(num, clock, taskFailed);
+	wait1Msec(WAIT_MESSAGE);
+}
+
+/*
+Test 2D axis moves in desired pattern
+Test 2D axis returns to origin
+Test complete water cycle
+Test 2D axis with tube
+*/
+void test_waterCycle()
+{
+	int taskFailed = NO_FAILURE;
+	if (activateWaterCycle(taskFailed))
+		resetWaterCycle(taskFailed);
+}
+
 task main()
 {
-	clearTimer(T1); //main timer
-	clearTimer(T2); //water cycle interval timer
-	clearTimer(T3); //rotation interval timer
 	configureSensors();
-	
-	TFileHandle config;
-	bool configOpen = openReadPC(config, "config.txt");
-	TFileHandle fout;
-	bool foutOpen = openWritePC(fout, "output.txt"); //syntax
-
-	if (configOpen && foutOpen)
-	{
-		/*
-  		START-UP PROCEDURE
-    		*/
-
-		bool executed = true; //false as soon as any function fails
-		int taskFailed = NO_FAILURE; //indicates which task failed
-		string plantName = " ";
-		
-		/*
-  		settings[0]: water interval	settings[1]: rotation interval
-      		settings[2]: day		settings[3]: month		settings[4]: year
-    		settings[5]: start hour		settings[6]: start minute
-		settings[7]: am = 1, pm = 0	settings[8]: current hour	settings[9]: current minute
-    		*/
-		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0};
-		
-		readUserSettings(config, plantName, settings);
-		setStartTime(settings);
-		generateStats(plantName, settings);
-
-		if (activateWaterCycle(taskFailed)) //first water-cycle
-			executed = resetWaterCycle(taskFailed);
-		else
-			executed = false;
-		
-		/*
-		MAIN OPERATION
-  		*/
-		if (executed)
-			activateGreenhouse(settings, plantName, executed, taskFailed);
-
-		/*
-		SHUT-DOWN PROCEDURE
-		*/
-		safeShutDown(taskFailed);
-		if (executed)
-			generateEndFile(fout, plantName, settings);
-		else
-			generateFailFile(fout, plantName, settings, taskFailed);
-		closeFilePC(fout);
-		closeFilePC(config);
-	}
-	else
-	{
-		displayTextLine(5, "ERROR opening files.");
-	}
+	test_waterCycle();
 }
