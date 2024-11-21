@@ -227,10 +227,6 @@ bool activateWaterCycle(int& taskFailed)
 	float xStartTime = time1[T1]; //fail safe
 	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME) && (SensorValue[S3] == 0))
 	{
-		if (SensorValue[S3] == 1)
-		{
-			executed = false;
-		}
 		// y-axis iterates multiple times while x-axis makes its first iteration
 		float yStartTime = time1[T1];
 		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
@@ -243,6 +239,10 @@ bool activateWaterCycle(int& taskFailed)
 			executed = false;
 		}
 	}
+	if (SensorValue[S3] == 1)
+		{
+			executed = false;
+		}
 	motor[motorC] = 0; //stop axis
 	motor[motorA] = 0;
 	motor[motorB] = 0;
