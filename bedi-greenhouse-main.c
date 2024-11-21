@@ -2,25 +2,25 @@
 Plant Bed(i) Greenhouse:
 An automated plant incubator for bringing up houseplants, powered by a LEGO Mindstorms EV3 Robot.
 By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
-Last Updated: 11/18/2024
+Last Updated: 11/20/2024
 */
 
 #include "PC_FileIO.c"
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
-const float MAX_PUMP_TIME = 0.0; //set empirically*******************
-const float MAX_X_AXIS_TIME = 7500;
-const float MAX_Y_AXIS_TIME = 9100;
-const float MAX_ROTATION_TIME = 0.0; //set empirically**********************
+const float MAX_PUMP_TIME = 19500; //axis time + 1 sec
+const float MAX_X_AXIS_TIME = 18500; //16410 runtime
+const float MAX_Y_AXIS_TIME = 10500; //8700 runtime
+const float MAX_ROTATION_TIME = 20000;
 
 //Rotation constants (found empirically)
-const float ROTATION_DISTANCE = 24.1;
-const int ROTATION_SPEED = 25; //set empirically******************************
+const float ROTATION_DISTANCE = 28;
+const int ROTATION_SPEED = 20;
 const int MAX_ROTATIONS = 2; //change direction after 2 turns
 
 //Wheel radii and conversion factors (found empirically)
-const float ROTATION_WHEEL_RADIUS = 5.7;
+const float ROTATION_WHEEL_RADIUS = 2.5;
 const float Y_AXIS_WHEEL_RADIUS = 1.9;
 const float X_AXIS_WHEEL_RADIUS = 0.6;
 const float ROTATION_CONVERSION_FACTOR = 2.0*PI*ROTATION_WHEEL_RADIUS/360.0; 
@@ -28,13 +28,15 @@ const float Y_AXIS_CONVERSION_FACTOR = 2.0*PI*Y_AXIS_WHEEL_RADIUS/360.0;
 const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 
 //Water cycle constants (found empirically)
-const int PUMP_SPEED = 25; //set empirically**************
-const float Y_AXIS_LENGTH = 12.0; //actual = 14.0 cm 
-const float X_AXIS_LENGTH = 16.0; //actual = 18.0 cm 
-const float X_AXIS_SPEED = 10.0;
+const int PUMP_SPEED = 100;
+const float Y_AXIS_LENGTH = 8.5; //full rail 14.0 cm
+const float X_AXIS_LENGTH = 5; //full rail 18.0 cm; cut off due to axis design
+const float BUFFER_LENGTH = 3.5; //due to change in direction
+const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
 //Fail integers (for fail-safe error message)
+const int NO_FAILURE = -1;
 const int ROTATION_FAILED = 0;
 const int PUMP_FAILED = 1;
 const int AXIS_FAILED = 2;
@@ -43,32 +45,30 @@ const int AXIS_FAILED = 2;
 const int WAIT_MESSAGE = 2500; 
 
 /*
-MOTOR A: x direction, 2D axis (1)
-MOTOR B: rotation of greenhouse base
-MOTOR C: x direction, 2D axis (2)
-MOTOR D: y direction, 2D axis
-MULTIPLEXER M1: peristaltic pump
+MOTOR A: x direction on 2D axis (1)
+MOTOR B: x direction on 2D axis (2)
+MOTOR C: y direction on 2D axis
+MOTOR D: peristaltic pump
+MULTIPLEXER M1: rotation of greenhouse base
 */
 
 /*
-SENSOR 1: colour sensor
-SENSOR 2: multiplexer
+SENSOR 1: multiplexer
+SENSOR 4: colour sensor
 */
 void configureSensors()
 {
-	SensorType[S1] = sensorEV3_Color;
+	SensorType[S1] = sensorI2CCustom;
 	wait1Msec(50);
-	SensorMode[S1] = modeEV3Color_Color;
+	SensorType[S4] = sensorEV3_Color;
 	wait1Msec(50);
-	// initialize, for the multiplexer connected to S2
-	SensorType[S2] = sensorI2CCustom;
-	MSMMUXinit();
+	SensorMode[S4] = modeEV3Color_Color;
 	wait1Msec(50);
 }
 
 bool checkFillLevel()
 {
-	if (SensorMode[S1] == (int)colorWhite)
+	if (SensorValue[S4] == (int)colorWhite)
 		return false;
 	else
 		return true;
@@ -79,14 +79,17 @@ void displayFillLevel()
 	if (checkFillLevel())
 		displayTextLine(5, "Water available in tank.");
 	else
-		displayTextLine(5, "Empty water tank. Please add water.");
+	{
+		displayTextLine(5, "Empty water tank.");
+		displayTextLine(6, "Please add water.");
+	}
 }
 
 //Returns time when pump started
 float startPump()
 {
 	float startTime = time1[T1];
-	MSMMotor(mmotor_S1_1, PUMP_SPEED);
+	motor[motorD] = PUMP_SPEED;
 	return startTime;
 }
 
@@ -94,55 +97,62 @@ float startPump()
 Resets 2D axis to starting position
 First x-axis, then y-axis
 Returns false if fails
+taskFailed refers to which task failed if any
 */
-bool resetWaterCycle()
+bool resetWaterCycle(int& taskFailed)
 {
 	bool executed = true;
 	float startTime = time1[T1];
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
+	nMotorEncoder[motorB] = 0; //error when combined in one line
+	nMotorEncoder[motorA] = 0;
 	
-	motor[motorC] = motor[motorA] = -X_AXIS_SPEED; //x-axis
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
+	motor[motorB] = -X_AXIS_SPEED; //x-axis motors
+	motor[motorA] = -X_AXIS_SPEED;
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < (X_AXIS_LENGTH+BUFFER_LENGTH)) && (time1[T1] - startTime < MAX_X_AXIS_TIME))
 	{}
-	motor[motorC] = motor[motorA] = 0;
+	motor[motorB] = 0;
+	motor[motorA] = 0;
 	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
-		executed = false;
-
-	if (executed)
 	{
-		startTime = time1[T1];
-		motor[motorD] = -Y_AXIS_SPEED; //y-axis
-		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - startTime < MAX_Y_AXIS_TIME))
-		{}
-		motor[motorD] = 0;
-		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
-			executed = false;
+		taskFailed = AXIS_FAILED;
+		executed = false;
 	}
 	return executed;
 }
 
 /*
 Reads in user array and saves settings
-settings[0]: water cycle interval, settings[1]: rotation cycle interval
-settings[2]: day, settings[3]: month, settings[4]: year
 */
-void readUserSettings(TFileHandle& config, string& plantName, float* settings)
+void readUserSettings(TFileHandle& config, string& plantName, float& waterInterval, float& rotationInterval, float& day, float& month, float& year)
 {
 	string header = " "; //ignore headers on config file
+	readTextPC(config, header);
 	readTextPC(config, header);
 	readTextPC(config, plantName);
 	
 	readTextPC(config, header);
-	readFloatPC(config, *settings);
 	readTextPC(config, header);
-	readFloatPC(config, *(settings++));
+	readTextPC(config, header);
+	readTextPC(config, header);
+	readFloatPC(config, waterInterval);
 	
 	readTextPC(config, header);
-	readFloatPC(config, *(settings++));
 	readTextPC(config, header);
-	readFloatPC(config, *(settings++));
 	readTextPC(config, header);
-	readFloatPC(config, *(settings++));
+	readTextPC(config, header);
+	readFloatPC(config, rotationInterval);
+	
+	readTextPC(config, header);
+	readTextPC(config, header);
+	readFloatPC(config, day);
+		
+	readTextPC(config, header);
+	readTextPC(config, header);
+	readFloatPC(config, month);
+		
+	readTextPC(config, header);
+	readTextPC(config, header);
+	readFloatPC(config, year);
 }
 
 /*
@@ -151,29 +161,38 @@ Switches directions after 180 degrees (MAX_ROTATIONS)
 int& numRotations: number of rotations thus far
 bool& clockwise: true for CW, false for CCW
 Returns false if fails
+taskFailed refers to which task failed if any
 */
-bool rotateGreenhouse(int& numRotations, bool& clockwise)
+bool rotateGreenhouse(int& numRotations, bool& clockwise, int& taskFailed)
 {
 	bool executed = true;
+	//bool buffer = false; //need buffer for direction change
 	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
 		clockwise = !clockwise; //change direction
 		numRotations = 0;
+		//buffer = true;
 	}
-
-	nMotorEncoder[motorB] = 0;
-	if (clockwise)
-		motor[motorB] = ROTATION_SPEED;
 	else
-		motor[motorB] = -ROTATION_SPEED;
-
-	while((abs(nMotorEncoder[motorB])*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
+		numRotations++;
+	
+	
+	if (clockwise)
+		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
+	else
+		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
+	
+	MSMMotorEncoderReset(mmotor_S1_1);
+	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
-	motor[motorB] = 0;
+	MSMotorStop(mmotor_S1_1);
 	
 	if (time1[T1] - startTime > MAX_ROTATION_TIME)
+	{
+		taskFailed = ROTATION_FAILED;
 		executed = false;
+	}
 	return executed;
 }
 
@@ -182,8 +201,9 @@ Checks if water is available
 Starts the pump and the 2D axis motors
 Stops pump and returns motors to origin
 Returns false if fails
+taskFailed refers to which task failed if any
 */
-bool activateWaterCycle()
+bool activateWaterCycle(int& taskFailed)
 {
 	bool executed = true;
 	while (!checkFillLevel()) //no water
@@ -194,38 +214,52 @@ bool activateWaterCycle()
 	startPump();
 
 	//activate 2D axis
-	nMotorEncoder[motorC] = nMotorEncoder[motorD] = nMotorEncoder[motorA] = 0;
-	motor[motorC] = motor[motorA] = X_AXIS_SPEED;
-	motor[motorD] = Y_AXIS_SPEED;
+	nMotorEncoder[motorA] = 0; //error when combined in one line
+	nMotorEncoder[motorB] = 0;
+	nMotorEncoder[motorC] = 0;
+	motor[motorB] = X_AXIS_SPEED;
+	motor[motorA] = X_AXIS_SPEED;
+	motor[motorC] = Y_AXIS_SPEED;
+	
 	float xStartTime = time1[T1]; //fail safe
-	while((abs(nMotorEncoder[motorC])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
+	while((abs(nMotorEncoder[motorA])*X_AXIS_CONVERSION_FACTOR < X_AXIS_LENGTH) && (time1[T1] - xStartTime < MAX_X_AXIS_TIME) && (time1[T1] - startTime < MAX_PUMP_TIME))
 	{
+		// y-axis iterates multiple times while x-axis makes its first iteration
 		float yStartTime = time1[T1];
-		while((abs(nMotorEncoder[motorD])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
+		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
 		{}
-		motor[motorD] *= -1;
-		nmotorEncoder[motorD] = 0;
-		if (time1[T1] - startTime > MAX_Y_AXIS_TIME)
+		motor[motorC] *= -1;
+		nMotorEncoder[motorC] = 0;
+		if (time1[T1] - yStartTime > MAX_Y_AXIS_TIME)
+		{
+			taskFailed = AXIS_FAILED;
 			executed = false;
+		}
 	}
-	motor[motorC] = motor[motorA] = motor[motorD] = 0; //stop axis
-	MSMotorStop(mmotor_S1_1); //stop pump
-	if ((time1[T1] - startTime > MAX_PUMP_TIME) || (time1[T1] - xStartTime > MAX_X_AXIS_TIME))
+	motor[motorC] = 0; //stop axis
+	motor[motorA] = 0;
+	motor[motorB] = 0;
+	motor[motorD] = 0; //stop pump
+	
+	if (time1[T1] - xStartTime > MAX_X_AXIS_TIME)
+	{
+		taskFailed = AXIS_FAILED;
 		executed = false;
+	}
+	else if (time1[T1] - startTime > MAX_PUMP_TIME)
+	{
+		taskFailed = PUMP_FAILED;
+		executed = false;
+	}
+	
 	return executed;
-	//UPDATE: resetWaterCycle will be kept seperate**
 }
 
 /*
 Prompts the user to enter the current time and saves to float array
 */
-void setStartTime(float* settings)
-{
-	float* hourP = (6 + settings);
-	float hour = *hourP;
-	float minute = *(++hourP);
-	float period = *(++hourP);
-	
+void setStartTime(float& hour, float& minute, float& period)
+{	
 	// prompt user
 	displayTextLine(3, "Please enter the current time:");
 	wait1Msec(WAIT_MESSAGE);
@@ -286,30 +320,16 @@ void setStartTime(float* settings)
 
 		wait1Msec(500);
 	}
+	
 }
 
 /*
 Displays plant's stats (name, number of cycles, current date and time, etc.)
 */
-void generateStats(string plantName, float* settings)
+void generateStats(string plantName, float& timeWater, float& timeRotation, float& day, float& month, float& year, float& hour, float& minute, float& period, float& newHour, float& newMinute)
 {
-	float timeWater = *settings;
-	float timeRotation = *(++settings);
-	float day = *(++settings);
-	float month = *(++settings);
-	float year = *(++settings);
-	float hour = *(++settings);
-	float minute = *(++settings);
-	float period = *(++settings);
-	float newHour = *(++settings);
-	float newMinute = *(++settings);
 	float runTime = time1[T1];
-
 	int daysInMonth[12] = {31, 28,31, 30, 31, 30, 31 ,31 ,30, 31, 30, 31}; // index corresponds to month-1
-
-	// calculations for number of water cycle and rotations
-	int numWaterCycles = runTime / timeWater;
-	int numRotations = runTime / timeRotation;
 
 	//Calculating current time and date
 	if (period == 1) hour += 12;
@@ -362,9 +382,9 @@ void generateStats(string plantName, float* settings)
 	wait1Msec(WAIT_MESSAGE);
 	displayTextLine(4, "Total run time in milliseconds: %.0f", runTime);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of water cycles: %.0f", numWaterCycles);
+	displayTextLine(4, "Water cycle frequency (ms): %.0f", timeWater);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of rotations: %.0f", numRotations);
+	displayTextLine(4, "Rotation frequency (ms): %.0f", timeRotation);
 	wait1Msec(WAIT_MESSAGE);
 
 	// correct display of date
@@ -382,60 +402,199 @@ void generateStats(string plantName, float* settings)
 
 }
 
-//kira
-void generateEndFile(TFileHandle& fout, string plantName, float* settings, int* date)
+/*
+Generates end file based on stats from generateStats(string, float*)
+*/
+void generateEndFile(TFileHandle& fout, string plantName, float& timeWater, float& timeRotation, float& day, float& month, float& year, float& hour, float& minute, float& period, float& newHour, float& newMinute)
 {
-	/*
+	generateStats(plantName, timeWater, timeRotation, day, month, year, hour, minute, period, newHour, newMinute);
+  	
+	writeTextPC(fout, "PLANT NAME:");
+	writeEndlPC(fout);
+	writeTextPC(fout, plantName);
  	writeEndlPC(fout);
-  	string s, float f, int i, etc.
-  	writeTextPC(fout, s);
-   	writeFloatPC(fout, f);
-    	writeFloatPC(fout, "%.2f", f); //this is how they do it on the doc but i feel like it's writeTextPC not writeFloatPC
-     	writeIntPC(fout, i);
+	writeEndlPC(fout);
+
+   	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
+	writeEndlPC(fout);
+    	writeFloatPC(fout, timeWater);
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+    	writeTextPC(fout, "ROTATION CYCLE INTERVAL (milliseconds):");
+	writeEndlPC(fout);
+    	writeFloatPC(fout, timeRotation);
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+   	writeTextPC(fout, "DAY (##)");
+	writeEndlPC(fout);
+	if (day < 10.0)
+	{
+		writeTextPC(fout, "0");
+	   	writeFloatPC(fout, "%.0f", day);
+	}
+	else 
+	{
+		writeFloatPC(fout, "%.0f", day);
+	}
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+   	writeTextPC(fout, "MONTH (##)");
+	writeEndlPC(fout);
+    	writeFloatPC(fout, "%.0f", month);
+  	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+    	writeTextPC(fout, "YEAR (####)");
+	writeEndlPC(fout);
+    	writeFloatPC(fout, "%.0f", year);
+	writeEndlPC(fout);  
+	writeEndlPC(fout);
+	
+	writeTextPC(fout, "END TIME:");
+	writeEndlPC(fout);
+	writeFloatPC(fout,  "%.0f", newHour);
+	writeTextPC(fout, ":");
+	writeFloatPC(fout, "%.0f", newMinute);
+	
+	if (period == 0)
+		writeTextPC(fout, "a.m.");
+	else 
+		writeTextPC(fout, "p.m.");	
+
+}
+
+/*
+Generates fail file based on generateEndFile(TFileHandle&, string, float*)
+Adds message about why the robot failed
+*/
+void generateFailFile(TFileHandle& fout, string plantName, int taskFailed, float& timeWater, float& timeRotation, float& day, float& month, float& year, float& hour, float& minute, float& period, float& newHour, float& newMinute)
+{
+	generateEndFile(fout, plantName, timeWater, timeRotation, day, month, year, hour, minute, period, newHour, newMinute);
+	writeEndlPC(fout);
+
+	switch(taskFailed)
+	{
+		case 0:
+			writeTextPC(fout, "ROTATION FAILED");
+			break;
+		case 1:
+			writeTextPC(fout, "WATER PUMP FAILED");
+			break;
+		case 2:
+			writeTextPC(fout, "2D AXIS FAILED");
+			break;
+		default:
+			writeTextPC(fout, "UNKNOWN FAILURE");
+	}
+}
+
+/*
+All daily operations (performs water/rotation cycles at the proper intervals, and listening for buttons)
+*/
+void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, float& waterInterval, float& rotationInterval, float& day, float& month, float& year, float& hour, float& minute, float& period, float& newHour, float& newMinute)
+{
+	clearTimer(T2); //water cycle interval timer
+	clearTimer(T3); //rotation interval timer
+	
+	// initialize, for the multiplexer connected to S4; must be done here (not global)
+	MSMMUXinit();
+	wait1Msec(50);
+	
+	/*
+ 	buttonUp: stats report
+  	buttonDown: shut down
 	*/
 
-	//don't include time
+	int numRotations = 0; //no turns yet
+	bool clockwise = true; //first turn clockwise
+	bool userShutDown = false; //to exit activateGreenhouse without failing
+	
+	while(executed && !userShutDown)
+	{
+		displayTextLine(4, "Press UP for stats");
+		displayTextLine(5, "Press DOWN to shut down");
+		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && (time1[T2] < waterInterval) && (time1[T3] < rotationInterval))
+		{}
+	
+		//GEN STATS
+		if (getButtonPress(buttonUp))
+		{
+			while(getButtonPress(buttonAny))
+			{}
+			wait1Msec(50); //buffer
+			generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute);
+		}
+	
+		//SHUT DOWN
+		else if (getButtonPress(buttonDown)) //shut down
+		{
+			while(getButtonPress(buttonAny))
+			{}
+			wait1Msec(50); //buffer
+			userShutDown = true;
+		}
+	
+		//WATER CYCLE
+		else if (time1[T2] > waterInterval)
+		{
+			if (activateWaterCycle(taskFailed))
+			{
+				executed = resetWaterCycle(taskFailed);
+				clearTimer(T2);
+			}
+			else
+				executed = false;
+		}
+	
+		//ROTATION
+		else if (time1[T3] > rotationInterval)
+		{
+			executed = rotateGreenhouse(numRotations, clockwise, taskFailed);
+			clearTimer(T3);
+		}
+	}
 }
 
-//kira
-void generateFailFile(TFileHandle& fout, string plantName, float* settings, int* date, int taskFailed)
+void safeShutDown(int taskFailed)
 {
-	/* ROTATION_FAILED = 0 PUMP_FAILED = 1 AXIS_FAILED = 2*/
-}
-
-//emma
-void activateGreenhouse(float* settings, string plantName, int* date)
-{}
-
-void safeShutDown()
-{
-	MSMotorStop(mmotor_S1_1); //stop pump
-	motor[motorB] = 0; //stop rotation
-	resetWaterCycle();
-	//generateFailFile();
+	motor[motorD] = 0; //stop pump
+	MSMotorStop(mmotor_S1_1); //stop rotation
+	resetWaterCycle(taskFailed);
+	//generate files
 }
 
 task main()
 {
-	clearTimer(T1);
+	clearTimer(T1); //main timer
 	configureSensors();
+
+	bool executed = true; //false as soon as any function fails
+	int taskFailed = NO_FAILURE; //indicates which task failed
+	string plantName = " ";
 	
-	TFileHandle config;
-	bool configOpen = openReadPC(config, "config.txt");
-	TFileHandle fout;
-	bool foutOpen = openWritePC(fout, "output.txt"); //syntax
+	/*
+  	settings[0]: water interval	settings[1]: rotation interval
+    	settings[2]: day		settings[3]: month		settings[4]: year
+    	settings[5]: start hour		settings[6]: start minute
+	settings[7]: am = 1, pm = 0	settings[8]: current hour	settings[9]: current minute
+    	*/
+	float settings[10] = {30000, 60000, 0, 0, 0, 0, 0, 0, 0, 0};
 
-	if (configOpen && foutOpen)
-	{
-		string plantName = " ";
-		float settings[10] = {0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0}; //water cycle interval, rotation cycle interval, day, month, year, start hour, start minute, am/pm (0/1), current hour, current minute
-		readUserSettings(config, plantName, settings);
+	//read in user settings
+	//set time
+	//generate stats first time
 
-		closeFilePC(fout);
-		closeFilePC(config);
-	}
+	if (activateWaterCycle(taskFailed)) //first water-cycle
+		executed = resetWaterCycle(taskFailed);
 	else
-	{
-		displayTextLine(5, "ERROR opening files.");
-	}
+		executed = false;
+		
+	if (executed)
+		activateGreenhouse(plantName, executed, taskFailed, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9]);
+	
+	safeShutDown(taskFailed);
+	
 }
