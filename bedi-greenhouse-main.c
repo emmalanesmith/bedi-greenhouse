@@ -55,6 +55,7 @@ MULTIPLEXER M1: rotation of greenhouse base
 /*
 SENSOR 1: multiplexer
 SENSOR 4: colour sensor
+MULTIPLEXER S1: touch sensor
 */
 void configureSensors()
 {
