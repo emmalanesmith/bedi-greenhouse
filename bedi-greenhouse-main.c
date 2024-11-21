@@ -54,21 +54,21 @@ MULTIPLEXER M1: rotation of greenhouse base
 
 /*
 SENSOR 1: multiplexer
-SENSOR 2: colour sensor
+SENSOR 4: colour sensor
 */
 void configureSensors()
 {
 	SensorType[S1] = sensorI2CCustom;
 	wait1Msec(50);
-	SensorType[S2] = sensorEV3_Color;
+	SensorType[S4] = sensorEV3_Color;
 	wait1Msec(50);
-	SensorMode[S2] = modeEV3Color_Color;
+	SensorMode[S4] = modeEV3Color_Color;
 	wait1Msec(50);
 }
 
 bool checkFillLevel()
 {
-	if (SensorValue[S2] == (int)colorWhite)
+	if (SensorValue[S4] == (int)colorWhite)
 		return false;
 	else
 		return true;
@@ -549,7 +549,7 @@ All daily operations (performs water/rotation cycles at the proper intervals, an
 */
 void activateGreenhouse(float* settings, string plantName, bool& executed, int& taskFailed)
 {
-	// initialize, for the multiplexer connected to S2; must be done here (not global)
+	// initialize, for the multiplexer connected to S4; must be done here (not global)
 	MSMMUXinit();
 	wait1Msec(50);
 	
