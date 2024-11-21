@@ -3,6 +3,9 @@ Plant Bed(i) Greenhouse:
 An automated plant incubator for bringing up houseplants, powered by a LEGO Mindstorms EV3 Robot.
 By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
 Last Updated: 11/21/2024
+
+PLEASE ENTER USER SETTINGS ON LINES 508-510!!!
+
 */
 
 #include "mindsensors‐motormux.h"
@@ -30,7 +33,7 @@ const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 const int PUMP_SPEED = 100;
 const float Y_AXIS_LENGTH = 8.5; //full rail 14.0 cm
 const float X_AXIS_LENGTH = 5; //full rail 18.0 cm; cut off due to axis design
-const float BUFFER_LENGTH = 3.5; //due to change in direction
+const float BUFFER_LENGTH = 1.5; //due to change in direction; 3.5 originally
 const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
@@ -68,6 +71,14 @@ void configureSensors()
 	wait1Msec(50);
 }
 
+void clearScreen()
+{
+	displayTextLine(3, " ");
+	displayTextLine(4, " ");
+	displayTextLine(5, " ");
+	displayTextLine(6, " ");
+}
+
 bool checkFillLevel()
 {
 	if (SensorValue[S4] == (int)colorWhite)
@@ -82,8 +93,8 @@ void displayFillLevel()
 		displayTextLine(5, "Water available in tank.");
 	else
 	{
-		displayTextLine(5, "Empty water tank.");
-		displayTextLine(6, "Please add water.");
+		displayTextLine(4, "Empty water tank.");
+		displayTextLine(5, "Please add water.");
 	}
 }
 
@@ -114,9 +125,14 @@ bool resetWaterCycle(int& taskFailed)
 	{}
 	motor[motorB] = 0;
 	motor[motorA] = 0;
+	
 	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
 	{
 		taskFailed = AXIS_FAILED;
+		executed = false;
+	}
+	else if (SensorValue[S3] == 1)
+	{
 		executed = false;
 	}
 	return executed;
@@ -178,6 +194,7 @@ bool activateWaterCycle(int& taskFailed)
 		displayFillLevel();
 	}
 	float startTime = time1[T1]; // fail safe timer
+	clearScreen();
 	startPump();
 
 	//activate 2D axis
@@ -294,20 +311,17 @@ void setStartTime(float& hour, float& minute, float& period)
 
 		wait1Msec(500);
 	}
+	clearScreen();
 }
 
 /*
 Displays plant's stats (name, number of cycles, current date and time, etc.)
 */
-void generateStats(string plantName, float timeWater, float timeRotation, float day, float month, float year, float hour, float minute, float period, float newHour, float newMinute)
+void generateStats(string plantName, float timeWater, float timeRotation, float day, float month, float year, float hour, float minute, float& period, float newHour, float newMinute, bool executed, int taskFailed)
 {
 	float runTime = time1[T1];
 
 	int daysInMonth[12] = {31, 28, 31, 30, 31, 30, 31 ,31 ,30, 31, 30, 31}; // index corresponds to month-1
-
-	// calculations for number of water cycle and rotations
-	int numWaterCycles = runTime / timeWater;
-	int numRotations = runTime / timeRotation;
 
 	//Calculating current time and date
 	if (period == 1)
@@ -316,9 +330,11 @@ void generateStats(string plantName, float timeWater, float timeRotation, float 
 	// counting total number of full days, sets correct month and day
 	newMinute = runTime/1000/60 + minute; // total minutes
 	newHour = (newMinute/60) + hour; // total hours
-	newMinute -= ((newMinute/60)*60); // final number of minutes
+	if (newMinute > 60)
+		newMinute -= ((newMinute/60)*60); // final number of minutes
 	day += (newHour/24); // total days
-	newHour -= ((newHour/24)*24);// final number of hours
+	if (newHour > 24)
+		newHour -= ((newHour/24)*24);// final number of hours
 
 	// changing a.m./p.m.
 	if (newHour >= 0 && newHour <= 11)
@@ -334,6 +350,7 @@ void generateStats(string plantName, float timeWater, float timeRotation, float 
 
 	else period = 0;
 	bool correctDate = false;
+
 	while (!correctDate)
 	{
 		if (day > daysInMonth[month-1])
@@ -355,11 +372,11 @@ void generateStats(string plantName, float timeWater, float timeRotation, float 
 	// display stats
 	displayTextLine(4, "Plant name: %s", plantName);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Total run time in milliseconds: %d", runTime);
+	displayTextLine(4, "Total run time (ms): %d", runTime);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of water cycles: %d", numWaterCycles);
+	displayTextLine(4, "Water interval (ms): %d", timeWater);
 	wait1Msec(WAIT_MESSAGE);
-	displayTextLine(4, "Number of rotations: %d", numRotations);
+	displayTextLine(4, "Rotation interval (ms): %d", timeRotation);
 	wait1Msec(WAIT_MESSAGE);
 
 	// correct display of date
@@ -378,8 +395,32 @@ void generateStats(string plantName, float timeWater, float timeRotation, float 
 	if (newMinute < 10)
 		displayTextLine(4, "%d:0%d %s", newHour, newMinute, periodDisplay);
 	else
-		displayTextLine(4, "%d:%d %s", newHour, periodDisplay);
+		displayTextLine(4, "%d:%d %s", newHour, newMinute, periodDisplay);
 	wait1Msec(WAIT_MESSAGE);
+	
+	if (!executed)
+	{
+		displayTextLine(4, "ROBOT FAILURE:");
+		switch (taskFailed)
+		{
+			case -1:
+				displayTextLine(5, "UNKNOWN REASON");
+				break;
+			case 0:
+				displayTextLine(5, "ROTATION FAILED");
+				break;
+			case 1:
+				displayTextLine(5, "PUMP FAILED");
+				break;
+			case 2:
+				displayTextLine(5, "AXIS FAILED");
+				break;
+			default:
+				displayTextLine(5, "UNKNOWN REASON");
+		} 
+		wait1Msec(WAIT_MESSAGE);
+	}
+	clearScreen();
 }
 
 /*
@@ -419,7 +460,8 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 			while(getButtonPress(buttonAny))
 			{}
 			wait1Msec(50); //buffer
-			generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute);
+			clearScreen();
+			generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute, executed, taskFailed);
 		}
 	
 		//SHUT DOWN
@@ -452,22 +494,36 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 	}
 }
 
-void safeShutDown(string plantName, float waterInterval, float rotationInterval, float day, float month, float year, float hour, float minute, float period, float newHour, float newMinute, int taskFailed)
+void safeShutDown(string plantName, float waterInterval, float rotationInterval, float day, float month, float year, float hour, float minute, float period, float newHour, float newMinute, int taskFailed, bool executed)
 {
 	motor[motorD] = 0; //stop pump
 	MSMotorStop(mmotor_S1_1); //stop rotation
 	//resetWaterCycle(taskFailed);
-	generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute);
+	clearScreen();
+	generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute, executed, taskFailed);
 }
 
 task main()
 {
+	/*
+ 	ENTER USER SETTINGS HERE:
+  	plantName: desired name of plant!
+   	waterTiming: time in between water cycles (milliseconds)
+    	rotationTiming: time in between rotation cycles (milliseconds)
+ 	*/
+	string plantName = "JoshUUUUa";
+	float waterTiming = 15000;
+	float rotationTiming = 30000;
+	/*
+ 	END OF USER SETTINGS
+  	*/
+	
 	clearTimer(T1); //main timer
 	configureSensors();
+	MSMotorStop(mmotor_S1_1); //precaution
 
 	bool executed = true; //false as soon as any function fails
 	int taskFailed = NO_FAILURE; //indicates which task failed
-	string plantName = " ";
 	
 	/*
   	settings[0]: water interval	settings[1]: rotation interval
@@ -475,10 +531,12 @@ task main()
     	settings[5]: start hour		settings[6]: start minute
 	settings[7]: am = 1, pm = 0	settings[8]: current hour	settings[9]: current minute
     	*/
-	float settings[10] = {30000, 60000, 0, 0, 0, 0, 0, 0, 0, 0};
+	float settings[10] = {waterTiming, rotationTiming, 21, 11, 2024, 0, 0, 0, 0, 0};
 
 	setStartTime(settings[5], settings[6], settings[7]);
-	generateStats(plantName, executed, taskFailed, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9]);
+	//displayTextLine(5, "SUCCESS");
+	//wait1Msec(5000);
+	generateStats(plantName, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9], executed, taskFailed);
 
 	if (activateWaterCycle(taskFailed)) //first water-cycle
 		executed = resetWaterCycle(taskFailed);
@@ -487,7 +545,7 @@ task main()
 	
 	if (executed)
 		activateGreenhouse(plantName, executed, taskFailed, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9]);
-	
-	safeShutDown(plantName, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9], taskFailed);
+
+	safeShutDown(plantName, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9], taskFailed, executed);
 	
 }
