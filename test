@@ -98,10 +98,7 @@ void generateStats(string plantName, float timeWater, float timeRotation, float 
 	newHour = (newMinute/60) + hour; // total hours
 	newMinute -= ((newMinute/60)*60); // final number of minutes
 	day += (newHour/24); // total days
-	wait1Msec(10000);
 	newHour -= ((newHour/24)*24);// final number of hours
-
-	wait1Msec(10000);
 
 	// changing a.m./p.m.
 	if (newHour >= 0 && newHour <= 11)
