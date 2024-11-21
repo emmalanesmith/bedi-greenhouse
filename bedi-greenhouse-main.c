@@ -563,6 +563,7 @@ void safeShutDown(int taskFailed)
 	motor[motorD] = 0; //stop pump
 	MSMotorStop(mmotor_S1_1); //stop rotation
 	resetWaterCycle(taskFailed);
+	//generate files
 }
 
 task main()
@@ -573,7 +574,7 @@ task main()
 	bool executed = true; //false as soon as any function fails
 	int taskFailed = NO_FAILURE; //indicates which task failed
 	string plantName = " ";
-		
+	
 	/*
   	settings[0]: water interval	settings[1]: rotation interval
     	settings[2]: day		settings[3]: month		settings[4]: year
@@ -581,6 +582,10 @@ task main()
 	settings[7]: am = 1, pm = 0	settings[8]: current hour	settings[9]: current minute
     	*/
 	float settings[10] = {30000, 60000, 0, 0, 0, 0, 0, 0, 0, 0};
+
+	//read in user settings
+	//set time
+	//generate stats first time
 
 	if (activateWaterCycle(taskFailed)) //first water-cycle
 		executed = resetWaterCycle(taskFailed);
