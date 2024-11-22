@@ -38,7 +38,7 @@ const float X_AXIS_CONVERSION_FACTOR = 2.0*PI*X_AXIS_WHEEL_RADIUS/360.0;
 const int PUMP_SPEED = 100;
 const float Y_AXIS_LENGTH = 8.5; //full rail 14.0 cm
 const float X_AXIS_LENGTH = 5; //full rail 18.0 cm; cut off due to axis design
-const float BUFFER_LENGTH = 2.5; //due to change in direction; 3.5 originally
+const float BUFFER_LENGTH = 3.25; //due to change in direction; 3.5 originally
 const float X_AXIS_SPEED = 5.0;
 const float Y_AXIS_SPEED = 3.0;
 
