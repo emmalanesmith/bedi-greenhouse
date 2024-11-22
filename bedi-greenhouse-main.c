@@ -2,23 +2,20 @@
 Plant Bed(i) Greenhouse:
 An automated plant incubator for bringing up houseplants, powered by a LEGO Mindstorms EV3 Robot.
 By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
-Last Updated: 11/21/2024
+Last Updated: 11/22/2024
 */
 
 /*
-
-
-PLEASE ENTER USER SETTINGS ON LINES 519-521!!!
-
-
+NOTE:
+ENTER USER SETTINGS ON LINES 516-521
 */
 
 #include "mindsensors‐motormux.h"
 
 //Fail-safe max times (found empirically)
 const float MAX_PUMP_TIME = 19500; //axis time + 1 sec
-const float MAX_X_AXIS_TIME = 18500; //16410 runtime
-const float MAX_Y_AXIS_TIME = 10500; //8700 runtime
+const float MAX_X_AXIS_TIME = 18500; //measured 16410 runtime
+const float MAX_Y_AXIS_TIME = 10500; //measured 8700 runtime
 const float MAX_ROTATION_TIME = 20000;
 
 //Rotation constants (found empirically)
@@ -86,7 +83,7 @@ void clearScreen()
 
 bool checkFillLevel()
 {
-	if (SensorValue[S4] == (int)colorWhite)
+	if (SensorValue[S4] == (int)colorWhite) //no water, ping pong ball at bottom
 		return false;
 	else
 		return true;
@@ -103,7 +100,7 @@ void displayFillLevel()
 	}
 }
 
-//Returns time when pump started
+//Starts pump and returns time of start
 float startPump()
 {
 	float startTime = time1[T1];
@@ -112,14 +109,13 @@ float startPump()
 }
 
 /*
-Resets 2D axis to starting position
-First x-axis, then y-axis
+Resets x-axis to starting position
 Returns false if fails
-taskFailed refers to which task failed if any
+taskFailed updates to AXIS_FAILED (2) or NO_FAILURE (-1)
 */
 bool resetWaterCycle(int& taskFailed)
 {
-	bool executed = true;
+	bool executed = true; //assume no failure
 	float startTime = time1[T1];
 	nMotorEncoder[motorB] = 0; //error when combined in one line
 	nMotorEncoder[motorA] = 0;
@@ -131,12 +127,12 @@ bool resetWaterCycle(int& taskFailed)
 	motor[motorB] = 0;
 	motor[motorA] = 0;
 	
-	if (time1[T1] - startTime > MAX_X_AXIS_TIME)
+	if (time1[T1] - startTime > MAX_X_AXIS_TIME) //exceeded timer
 	{
 		taskFailed = AXIS_FAILED;
 		executed = false;
 	}
-	else if (SensorValue[S3] == 1)
+	else if (SensorValue[S3] == 1) //emergency stop button
 	{
 		executed = false;
 	}
@@ -149,34 +145,32 @@ Switches directions after 180 degrees (MAX_ROTATIONS)
 int& numRotations: number of rotations thus far
 bool& clockwise: true for CW, false for CCW
 Returns false if fails
-taskFailed refers to which task failed if any
+taskFailed updates to ROTATION_FAILED (0) or NO_FAILURE (-1)
 */
 bool rotateGreenhouse(int& numRotations, bool& clockwise, int& taskFailed)
 {
 	bool executed = true;
-	//bool buffer = false; //buffer for direction change
 	float startTime = time1[T1];
 	if (numRotations == MAX_ROTATIONS)
 	{
 		clockwise = !clockwise; //change direction
-		numRotations = 0;
-		//buffer = true;
+		numRotations = 0; //reset counter
 	}
 	else
 		numRotations++;
 	
 	
 	if (clockwise)
-		MSMMotor(mmotor_S1_1, -ROTATION_SPEED);
+		MSMMotor(mmotor_S1_1, -ROTATION_SPEED); //CW
 	else
-		MSMMotor(mmotor_S1_1, ROTATION_SPEED);
+		MSMMotor(mmotor_S1_1, ROTATION_SPEED); //CCW
 	
 	MSMMotorEncoderReset(mmotor_S1_1);
 	while((abs(MSMMotorEncoder(mmotor_S1_1))*ROTATION_CONVERSION_FACTOR < ROTATION_DISTANCE) && (time1[T1] - startTime < MAX_ROTATION_TIME)) //fail-safe
 	{}
 	MSMotorStop(mmotor_S1_1);
 	
-	if (time1[T1] - startTime > MAX_ROTATION_TIME)
+	if (time1[T1] - startTime > MAX_ROTATION_TIME) //exceeded timer
 	{
 		taskFailed = ROTATION_FAILED;
 		executed = false;
@@ -187,23 +181,23 @@ bool rotateGreenhouse(int& numRotations, bool& clockwise, int& taskFailed)
 /*
 Checks if water is available
 Starts the pump and the 2D axis motors
-Stops pump and returns motors to origin
+Stops pump
 Returns false if fails
-taskFailed refers to which task failed if any
+taskFailed updates as AXIS_FAILED (2), PUMP_FAILED (1), or NO_FAILURE (-1)
 */
 bool activateWaterCycle(int& taskFailed)
 {
 	bool executed = true;
 	while (!checkFillLevel()) //no water
 	{
-		displayFillLevel();
+		displayFillLevel(); //prompts user until water is filled
 	}
 	float startTime = time1[T1]; // fail safe timer
 	clearScreen();
 	startPump();
 
-	//activate 2D axis
-	nMotorEncoder[motorA] = 0; //error when combined in one line
+	//activate 2D axis (error caused when combined in one line)
+	nMotorEncoder[motorA] = 0;
 	nMotorEncoder[motorB] = 0;
 	nMotorEncoder[motorC] = 0;
 	motor[motorB] = X_AXIS_SPEED;
@@ -217,15 +211,15 @@ bool activateWaterCycle(int& taskFailed)
 		float yStartTime = time1[T1];
 		while((abs(nMotorEncoder[motorC])*Y_AXIS_CONVERSION_FACTOR < Y_AXIS_LENGTH) && (time1[T1] - yStartTime < MAX_Y_AXIS_TIME))
 		{}
-		motor[motorC] *= -1;
+		motor[motorC] *= -1; //change y-axis direction
 		nMotorEncoder[motorC] = 0;
-		if (time1[T1] - yStartTime > MAX_Y_AXIS_TIME)
+		if (time1[T1] - yStartTime > MAX_Y_AXIS_TIME) //exceeded y-axis timer
 		{
 			taskFailed = AXIS_FAILED;
 			executed = false;
 		}
 	}
-	if (SensorValue[S3] == 1)
+	if (SensorValue[S3] == 1) //emergency button pressed
 		{
 			executed = false;
 		}
@@ -234,12 +228,12 @@ bool activateWaterCycle(int& taskFailed)
 	motor[motorB] = 0;
 	motor[motorD] = 0; //stop pump
 	
-	if (time1[T1] - xStartTime > MAX_X_AXIS_TIME)
+	if (time1[T1] - xStartTime > MAX_X_AXIS_TIME) //exceeded x-axis timer
 	{
 		taskFailed = AXIS_FAILED;
 		executed = false;
 	}
-	else if (time1[T1] - startTime > MAX_PUMP_TIME)
+	else if (time1[T1] - startTime > MAX_PUMP_TIME) //exceeded pump timer
 	{
 		taskFailed = PUMP_FAILED;
 		executed = false;
@@ -249,7 +243,7 @@ bool activateWaterCycle(int& taskFailed)
 }
 
 /*
-Prompts the user to enter the current time and saves to float array
+Prompts the user to enter the current time and saves to float variables
 */
 void setStartTime(float& hour, float& minute, float& period)
 {
@@ -406,11 +400,11 @@ void generateStats(string plantName, float timeWater, float timeRotation, float 
 	if (!executed)
 	{
 		displayTextLine(4, "ROBOT FAILURE:");
-		switch (taskFailed)
+		switch (taskFailed) //display reason
 		{
 			case -1:
 				displayTextLine(5, "UNKNOWN REASON");
-				break;
+				break; //break statement approved by teaching team**
 			case 0:
 				displayTextLine(5, "ROTATION FAILED");
 				break;
@@ -453,13 +447,15 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 	{
 		displayTextLine(4, "Press UP for stats");
 		displayTextLine(5, "Press DOWN to shut down");
+
+		//listens for button presses, waits for timers
 		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && (time1[T2] < waterInterval) && (time1[T3] < rotationInterval) && (SensorValue[S3] == 0))
 		{}
 	
-		if (SensorValue[S3] == 1) //FAIL shut down button or axis tipped
+		if (SensorValue[S3] == 1) //emergency button pressed
 			executed = false;
 
-		//GEN STATS
+		//GENERATE STATS (up button)
 		else if (getButtonPress(buttonUp))
 		{
 			while(getButtonPress(buttonAny))
@@ -469,8 +465,8 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 			generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute, executed, taskFailed);
 		}
 	
-		//SHUT DOWN
-		else if (getButtonPress(buttonDown)) //shut down
+		//SHUT DOWN (down button)
+		else if (getButtonPress(buttonDown))
 		{
 			while(getButtonPress(buttonAny))
 			{}
@@ -478,7 +474,7 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 			userShutDown = true;
 		}
 	
-		//WATER CYCLE
+		//WATER CYCLE (time based)
 		else if (time1[T2] > waterInterval)
 		{
 			if (activateWaterCycle(taskFailed))
@@ -490,7 +486,7 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 				executed = false;
 		}
 	
-		//ROTATION
+		//ROTATION (time based)
 		else if (time1[T3] > rotationInterval)
 		{
 			executed = rotateGreenhouse(numRotations, clockwise, taskFailed);
@@ -503,7 +499,6 @@ void safeShutDown(string plantName, float waterInterval, float rotationInterval,
 {
 	motor[motorD] = 0; //stop pump
 	MSMotorStop(mmotor_S1_1); //stop rotation
-	//resetWaterCycle(taskFailed);
 	clearScreen();
 	generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute, executed, taskFailed);
 }
@@ -512,20 +507,26 @@ task main()
 {
 	/*
  	ENTER USER SETTINGS HERE:
-  	plantName: desired name of plant!
+  	plantName: desired name of your plant!
    	waterTiming: time in between water cycles (milliseconds)
     	rotationTiming: time in between rotation cycles (milliseconds)
+     	day, month, year: today's date (##, ##, ####)
  	*/
-	string plantName = "JoshUUUUa";
-	float waterTiming = 15000;
-	float rotationTiming = 30000;
+	
+	string plantName = " ";
+	float waterTiming = 0;
+	float rotationTiming = 0;
+	float day = 0;
+	float month = 0;
+	float year = 0;
+	
 	/*
  	END OF USER SETTINGS
   	*/
 	
 	clearTimer(T1); //main timer
 	configureSensors();
-	MSMotorStop(mmotor_S1_1); //precaution
+	MSMotorStop(mmotor_S1_1); //precaution for multiplexer motor
 
 	bool executed = true; //false as soon as any function fails
 	int taskFailed = NO_FAILURE; //indicates which task failed
@@ -536,18 +537,22 @@ task main()
     	settings[5]: start hour		settings[6]: start minute
 	settings[7]: am = 1, pm = 0	settings[8]: current hour	settings[9]: current minute
     	*/
-	float settings[10] = {waterTiming, rotationTiming, 21, 11, 2024, 0, 0, 0, 0, 0};
+	float settings[10] = {waterTiming, rotationTiming, day, month, year, 0, 0, 0, 0, 0};
 
-	setStartTime(settings[5], settings[6], settings[7]);
-	//displayTextLine(5, "SUCCESS");
-	//wait1Msec(5000);
+	setStartTime(settings[5], settings[6], settings[7]); //user inputs current time
 	generateStats(plantName, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9], executed, taskFailed);
 
-	if (activateWaterCycle(taskFailed)) //first water-cycle
+	/*
+ 	First water-cycle (start-up)
+ 	*/
+	if (activateWaterCycle(taskFailed))
 		executed = resetWaterCycle(taskFailed);
 	else
 		executed = false;
-	
+
+	/*
+ 	Main program operations
+	*/
 	if (executed)
 		activateGreenhouse(plantName, executed, taskFailed, settings[0], settings[1], settings[2], settings[3], settings[4], settings[5], settings[6], settings[7], settings[8], settings[9]);
 
