@@ -2,6 +2,7 @@
 Plant Bed(i) Greenhouse:
 An automated plant incubator for bringing up houseplants, powered by a LEGO Mindstorms EV3 Robot.
 By: Sevita Moiseev, Emma Lane-Smith, Kira Costen, Meeji Koo
+Acknowledgments: Dr. Carol Hulls, Xander Soldaat
 Last Updated: 11/22/2024
 */
 
