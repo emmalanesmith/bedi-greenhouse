@@ -452,8 +452,9 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 		//listens for button presses, waits for timers
 		while (!getButtonPress(buttonUp) && !getButtonPress(buttonDown) && (time1[T2] < waterInterval) && (time1[T3] < rotationInterval) && (SensorValue[S3] == 0))
 		{}
-	
-		if (SensorValue[S3] == 1) //emergency button pressed
+
+		//EMERGENCY SHUT-DOWN
+		if (SensorValue[S3] == 1)
 			executed = false;
 
 		//GENERATE STATS (up button)
@@ -466,7 +467,7 @@ void activateGreenhouse(string& plantName, bool& executed, int& taskFailed, floa
 			generateStats(plantName, waterInterval, rotationInterval, day, month, year, hour, minute, period, newHour, newMinute, executed, taskFailed);
 		}
 	
-		//SHUT DOWN (down button)
+		//NORMAL SHUT DOWN (down button)
 		else if (getButtonPress(buttonDown))
 		{
 			while(getButtonPress(buttonAny))
